@@ -1,14 +1,25 @@
 
 """
-An interface between netCDF4, pygrib and matplotlib's basemap
+An interface between scipy, pandas, pygrib and matplotlib's basemap
 """
 
-import netcdf4.Dataset
+#import numpy as np
+#import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.io.netcdf import netcdf_file
 
 class Dataset :
-	def __init__(file_path, mode = 'r')
-		extension = split(file_path, '.')[1]
-		if extension == nc :
-			self = Dataset(file_path, mode)
+	def __init__(self, filePath, mode = 'r') :
+		if filePath.endswith('nc') :
+			self.kind = 'nc'
+			self.raw = netcdf_file(filePath, mode)
 
+			self.variableNames = self.raw.variables.keys()
+		else :
+			print "Not supported"
 
+	def __getattr__(self, attributeName) :
+		if attributeName in self.variableNames :
+			return self.raw.variables[attributeName]
+		else :
+			raise AttributeError
