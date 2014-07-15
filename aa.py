@@ -23,7 +23,9 @@ class NetcdfFile(DataFile) :
 		self.dimensionNames = set(self.raw.dimensions.keys())
 		self.variableNames = set(self.raw.variables.keys()) \
 				- self.dimensionNames
-		# create axes
+		########
+		# AXES #
+		########
 		for dimensionName in self.dimensionNames :
 			if dimensionName == 'time' :
 				setattr(self, dimensionName, TimeAxis(
@@ -48,7 +50,6 @@ class NetcdfFile(DataFile) :
 		else :
 			raise AttributeError
 	
-	pass
 
 class GribFile(DataFile) :
 	def __init__(self, filePath) :
@@ -57,6 +58,9 @@ class GribFile(DataFile) :
 		gribLine = self.raw.readline()
 		firstInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
+		###################
+		# HORIZONTAL AXES #
+		###################
 		lats, lons = gribLine.latlons()
 		if lats[0, 0] == lats[0, 1] :
 			self.latitude = Axis(lats[:, 0], 'degrees')
@@ -64,32 +68,29 @@ class GribFile(DataFile) :
 		else :
 			self.latitude = Axis(lats[0, :], 'degrees')
 			self.longitude = Axis(lons[:, 0], 'degrees')
-		self.raw.seek(0)
+		self.raw.rewind()
+		#################
+		# VERTICAL AXIS #
+		#################
 		# sometimes 2D data is followed by 3D data
+		self.variableLevels = {}
 		verticalExtensions = {}
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
 					== firstInstant :
 			gribLine = self.raw.readline()
 			if gribLine.typeOfLevel not in verticalExtensions.keys() :
-				verticalExtensions[gribLine.typeOfLevel] = \
-					[[gribLine.shortName], [gribLine.level]]
-			else :
-				if gribLine.shortName not in \
-						verticalExtensions[gribLine.typeOfLevel][0] :
-					verticalExtensions[gribLine.typeOfLevel][0].append(
-							gribLine.shortName)
-				if gribLine.level not in \
-						verticalExtensions[gribLine.typeOfLevel][1] :
-					verticalExtensions[gribLine.typeOfLevel][1].append(
-							gribLine.level) 
-		self.variableNames = []
-		for levelType, verticalExtension in verticalExtensions.iteritems() :
-			self.variableNames.extend(
-				verticalExtension[0])
-			# create a vertical axis if number of levels is credible
-			if len(verticalExtension[1]) > 2 :
-				self.level = Axis(verticalExtension[1], levelType)
+				verticalExtensions[gribLine.typeOfLevel] = [gribLine.level]
+			if gribLine.shortName not in self.variableLevels.keys() :
+				self.variableLevels[gribLine.shortName] = gribLine.typeOfLevel
+		self.variableNames = self.variableLevels.keys()
+		# create a vertical axis if number of levels is credible
+		for levelType, levels in verticalExtensions.iteritems() :
+			if len(levels) != 1 :
+				self.level = Axis(levels, levelType)
+		#############
+		# TIME AXIS #
+		#############
 		# "seek/tell" index starts with 0 : -1
 		linesPerInstant = self.raw.tell() - 1
 		# determine the interval between two samples
@@ -111,8 +112,17 @@ class GribFile(DataFile) :
 		if lastInstant != self.time[-1] or \
 				lastIndex % linesPerInstant != 0 :
 			print "Error in time axis"
+		self.raw.rewind()
 
+	def __getattr__(self, attributeName) :
+		"Load variables on demand"
+		if attributeName in self.variableNames :
+			pass
+		else :
+			raise AttributeError
+	
 def open(filePath) :
+	"Picks the appropriate DataFile subclass to model a gridded data file"
 	if filePath.endswith('nc') :
 		return NetcdfFile(filePath)
 	if filePath.endswith('grib') :
