@@ -4,31 +4,61 @@ An interface between scipy, pygrib and matplotlib's basemap
 """
 
 import numpy as np
-#import pygrib
-#import matplotlib.pyplot as plt
 from datetime import datetime
 from datetime import timedelta
 
 
 class File(object) :
+	def __init__(self) :
+		self.axes = {}
+		self.variables = {}
+
+	def __getattr__(self, attributeName) :
+		if attributeName in self.axes.keys() :
+			return self.axes[attributeName]
+		elif attributeName in self.variables.keys() :
+			return self.variables[attributeName]
+		else :
+			raise AttributeError
+
 	def close(self) :
-		self.raw.close()
+		self._raw.close()
 		del self
+	"""
+	@property
+	def variables() :
+		raise NotImplementedError
+	@property
+	def axes() :
+		raise NotImplementedError
+	"""
 
 
 class Variable(object) :
-	def __init__(self, data, units, axes) :
-		self.data = data
-		self.units = units
-		self.axes = axes
-	
-	def __getitem__(self, *args, **kwargs) :
-		return self.data.__getitem__(*args, **kwargs)
-	#def mean
-	#def getitem
-	#def slices puissantes
-	#def interpolation
-	#def map
+	def __init__(self) :
+		self.axes = {}
+		self.variables = {}
+
+	def __getattr__(self, attributeName) :
+		if attributeName in self.variables.keys() :
+			return self.variables[attributeName]
+		elif attributeName in self.axes.keys() :
+			return self.axes[attributeName]
+		else :
+			raise AttributeError
+
+	def __getitem__() :
+		raise NotImplementedError
+	def __call__() :
+		raise NotImplementedError
+	"""
+	@property
+	def variables() :
+		raise NotImplementedError
+	@property
+	def axes() :
+		raise NotImplementedError
+	"""
 
 
 class Axis(object) :
