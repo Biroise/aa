@@ -74,7 +74,7 @@ class Variable(aa.Variable) :
 				mask = slice(None)
 				outputAxes[axisName] = self.axes[axisName]
 			multipleSlice.append(mask)
-		return Variable(self[mask], self.units, outputAxes)
+		return Variable(self.data[multipleSlice], self.units, outputAxes)
 
 
 if __name__ == "__main__" :
