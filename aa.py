@@ -85,7 +85,9 @@ class TimeAxis(Axis) :
 			units = words[0]
 			date = [int(bits) for bits in words[2].split('-')]
 			epoch = datetime(date[0], date[1], date[2])
-			self.data = [epoch + timedelta(**{units: offset}) for offset in self.data]
+			self.data = np.array(
+				[epoch + timedelta(**{units: offset})
+				for offset in self.data])
 
 
 def open(filePath) :
