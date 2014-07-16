@@ -6,6 +6,8 @@ An interface between scipy, pygrib and matplotlib's basemap
 import numpy as np
 from datetime import datetime
 from datetime import timedelta
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
 
 
 class File(object) :
@@ -24,14 +26,6 @@ class File(object) :
 	def close(self) :
 		self._raw.close()
 		del self
-	"""
-	@property
-	def variables() :
-		raise NotImplementedError
-	@property
-	def axes() :
-		raise NotImplementedError
-	"""
 
 
 class Variable(object) :
@@ -51,16 +45,22 @@ class Variable(object) :
 		raise NotImplementedError
 	def __call__() :
 		raise NotImplementedError
-	"""
-	@property
-	def variables() :
-		raise NotImplementedError
-	@property
-	def axes() :
-		raise NotImplementedError
-	"""
+	
+	def plot(self) :
+		if len(self.axes) == 1 :
+			pass
+		elif len(self.axes) == 2 :
+			self.basemap = Basemap(
+				projection = 'cyl',
+				llcrnrlon = self.longitude.data.min(),
+				llcrnrlat = self.latitude.data.min(),
+				urcrnrlon = self.longitude.data.max(),
+				urcrnrlat = self.latitude.data.max())
+			bm.drawcoastlines()
+		else :
+			print "Variable has too many axes or none"
 
-
+		
 class Axis(object) :
 	def __init__(self, data, units) :
 		self.data = data
@@ -103,4 +103,5 @@ def open(filePath) :
 if __name__ == "__main__" :
 	f = open('/home/ambroise/atelier/anniversaire/MERRA100.prod.assim.inst3_3d_asm_Cp.19880711.SUB.nc')
 	#f = open('/home/ambroise/atelier/anniversaire/tmp.grib')
-
+	h = f.h(time=datetime(1988, 7, 11, 9), levels=1000)
+	h.plot()
