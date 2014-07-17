@@ -4,8 +4,7 @@ An interface between scipy, pygrib and matplotlib's basemap
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
+from datetime import datetime
 
 from variable import Variable
 from axis import Axis
@@ -24,6 +23,12 @@ class File(object) :
 			return self.variables[attributeName]
 		else :
 			raise AttributeError
+	
+	def __getitem__(self, argument) :
+		if argument in self.axes.keys() :
+			return self.axes[argument]
+		if argument in self.variables.keys() :
+			return self.variables[argument]
 
 	def close(self) :
 		self._raw.close()
@@ -40,3 +45,8 @@ def open(filePath) :
 		return grib.File(filePath)
 
 
+def month(year, monthIndex) :
+	return (datetime(year, monthIndex, 1),
+			datetime(year + (monthIndex+1)/12, (monthIndex+1)%12, 1),
+			'co')
+	

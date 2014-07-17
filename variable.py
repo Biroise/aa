@@ -12,8 +12,6 @@ class Variable(object) :
 		else :
 			raise AttributeError
 
-	def __getitem__() :
-		raise NotImplementedError
 	def __call__() :
 		raise NotImplementedError
 	
@@ -48,4 +46,6 @@ class Variable(object) :
 		else :
 			print "Variable has too many axes or none"
 
-
+levelNames = ['level', 'levels', 'lev']
+latitudeNames = ['latitude', 'latitudes', 'lat']
+longitudeNames = ['longitude', 'longitudes', 'lon']
