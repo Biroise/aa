@@ -7,7 +7,6 @@ import aa
 
 class File(aa.File) :
 	def __init__(self, filePath) :
-		self.fileFormat = 'grib'
 		self._raw = pygrib.open(filePath)
 		gribLine = self._raw.readline()
 		firstInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
@@ -73,6 +72,9 @@ class File(aa.File) :
 			print "Error in time axis"
 		self._raw.rewind()
 
+	# makes variables similar to netcdf.py
+	# a waste of time for most uses
+	"""
 	def __getattr__(self, attributeName) :
 		"Load variables on demand"
 		if attributeName in self.variableNames :
@@ -99,8 +101,18 @@ class File(aa.File) :
 						(self.time, self.level, self.latitude, self.longitude))
 		else :
 			raise AttributeError
+		"""
 	
-
-if __name__ == "__main__" :
-	f = aa.open('/home/ambroise/atelier/anniversaire/tmp.grib')
+def Variable(aa.Variable) :
+	def __init__(self, axes, rawFile) :
+		super(Variable, self).__init(self)
+		self._raw = rawFile
+	
+	def __call__(self, **kwargs) :
+		# the standard way to extract a subset
+		raise NotImplemented
+	
+	def __getitem__(self, *args, **kwargs) :
+		# only if indices are used specifically must the whole data be loaded
+		raise NotImplemented
 
