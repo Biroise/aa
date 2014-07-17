@@ -3,12 +3,13 @@
 An interface between scipy, pygrib and matplotlib's basemap
 """
 
-import numpy as np
 from datetime import datetime
+from collections import OrderedDict
 
 from variable import Variable
 from axis import Axis
 from axis import TimeAxis
+from axis import month
 
 
 class File(object) :
@@ -45,8 +46,3 @@ def open(filePath) :
 		return grib.File(filePath)
 
 
-def month(year, monthIndex) :
-	return (datetime(year, monthIndex, 1),
-			datetime(year + (monthIndex+1)/12, (monthIndex+1)%12, 1),
-			'co')
-	

@@ -32,4 +32,10 @@ class TimeAxis(Axis) :
 				for offset in self.data])
 
 
+def month(year, monthIndex) :
+	return (datetime(year, monthIndex, 1),
+			datetime(year + (monthIndex+1)/12, (monthIndex+1)%12, 1),
+			'co')
+	
+
 

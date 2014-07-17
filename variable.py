@@ -1,10 +1,11 @@
 
 import numpy as np
+from collections import OrderedDict
 from mpl_toolkits.basemap import Basemap
 
 class Variable(object) :
 	def __init__(self) :
-		self.axes = {}
+		self.axes = OrderedDict()
 
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :

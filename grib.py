@@ -7,6 +7,7 @@ import aa
 
 class File(aa.File) :
 	def __init__(self, filePath) :
+		super(File, self).__init__()
 		self._raw = pygrib.open(filePath)
 		gribLine = self._raw.readline()
 		firstInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
@@ -25,9 +26,9 @@ class File(aa.File) :
 		#################
 		# VERTICAL AXIS #
 		#################
-		# sometimes 2D data is followed by 3D data
-		self.variableLevels = {}
-		verticalExtensions = {}
+		# sometimes 2D data is followed by 3D data e.g. jra25
+		variableLevels = {}	# variable and level type
+		verticalExtensions = {} 	# level type and list of levels
 		gribLine = self._raw.readline()
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
@@ -36,16 +37,16 @@ class File(aa.File) :
 				verticalExtensions[gribLine.typeOfLevel] = [gribLine.level]
 			else :
 				verticalExtensions[gribLine.typeOfLevel].append(gribLine.level)
-			if gribLine.shortName not in self.variableLevels.keys() :
-				self.variableLevels[gribLine.shortName] = gribLine.typeOfLevel
+			if gribLine.shortName not in variableLevels.keys() :
+				variableLevels[gribLine.shortName] = gribLine.typeOfLevel
 			gribLine = self._raw.readline()
-		self.variableNames = self.variableLevels.keys()
 		# create a vertical axis if number of levels is credible
 		for levelType, levels in verticalExtensions.iteritems() :
 			if len(levels) > 1 :
 				self.level = aa.Axis(levels, levelType)
+				verticalExtensions[levelType] = True
 			else :
-				verticalExtensions[levelType] = None
+				verticalExtensions[levelType] = False
 		#############
 		# TIME AXIS #
 		#############
@@ -71,48 +72,61 @@ class File(aa.File) :
 				lastIndex % linesPerInstant != 0 :
 			print "Error in time axis"
 		self._raw.rewind()
+		########
+		# AXES #
+		########
+		self.axes['time'] = self.time
+		self.axes['level'] = self.level
+		self.axes['latitude'] = self.latitude
+		self.axes['longitude'] = self.longitude
+		#############
+		# VARIABLES #
+		#############
+		for variableName, levelType in variableLevels.iteritems() :
+			axes = aa.OrderedDict()
+			axes['time'] = self.time
+			# does this variable have a vertical extension ?
+			if verticalExtensions[levelType] :
+				axes['level'] = self.level
+			axes['latitude'] = self.latitude
+			axes['longitude'] = self.longitude
+			self.variables[variableName] = Variable(axes, self._raw)
 
-	# makes variables similar to netcdf.py
-	# a waste of time for most uses
-	"""
 	def __getattr__(self, attributeName) :
-		"Load variables on demand"
-		if attributeName in self.variableNames :
-			if self.variableLevels[attributeName] == None :
-				data = np.empty(
-						(len(self.time),
-						len(self.latitude), len(self.longitude)),
-						dtype=float)
-				source = f._raw.select(shortName=attributeName)
-				for timeIndex in range(len(self.time)) :
-					data[timeIndex] = source[timeIndex].values
-				return aa.Variable(data, source[0].units,
-						(self.time, self.latitude, self.longitude))
-			else :
-				data = np.empty(
-						(len(self.time), len(self.level),
-						len(self.latitude), len(self.longitude)),
-						dtype=float)
-				source = f._raw.select(shortName=attributeName)
-				for timeIndex in range(len(self.time)) :
-					for levelIndex in range(len(self.level)) :
-						data[timeIndex, levelIndex] = source[timeIndex].values
-				return aa.Variable(data, source[0].units,
-						(self.time, self.level, self.latitude, self.longitude))
+		if attributeName in self.axes.keys() :
+			return self.axes[attributeName]
+		elif attributeName in self.variables.keys() :
+			return self.variables[attributeName]
 		else :
 			raise AttributeError
-		"""
 	
-def Variable(aa.Variable) :
+
+class Variable(aa.Variable) :
 	def __init__(self, axes, rawFile) :
-		super(Variable, self).__init(self)
+		super(Variable, self).__init__()
 		self._raw = rawFile
+		self.axes = axes
 	
 	def __call__(self, **kwargs) :
 		# the standard way to extract a subset
 		raise NotImplemented
 	
+	def get_data(self) :
+		"Loads variable.data ; a waste of time for most uses"
+		self._data = np.empty(
+				(len(self.time), len(self.level),
+				len(self.latitude), len(self.longitude)),
+				dtype=float)
+		source = f._raw.select(shortName=attributeName)
+		for timeIndex in range(len(self.time)) :
+			for levelIndex in range(len(self.level)) :
+				self._data[timeIndex, levelIndex] = source[timeIndex].values
+		return self._data
+	def set_data(self, newValue) :
+		self._data = newValue
+	data = property(get_data, set_data)
+		
 	def __getitem__(self, *args, **kwargs) :
 		# only if indices are used specifically must the whole data be loaded
-		raise NotImplemented
+		return self.data.__getitem__(*args, **kwargs)
 
