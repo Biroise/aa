@@ -1,9 +1,13 @@
 
 import pygrib
+import numpy as np
+import operator as op
+from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 
 import aa
+
 
 class File(aa.File) :
 	def __init__(self, filePath) :
@@ -83,14 +87,15 @@ class File(aa.File) :
 		# VARIABLES #
 		#############
 		for variableName, levelType in variableLevels.iteritems() :
-			axes = aa.OrderedDict()
+			axes = OrderedDict()
 			axes['time'] = self.time
 			# does this variable have a vertical extension ?
 			if verticalExtensions[levelType] :
 				axes['level'] = self.level
 			axes['latitude'] = self.latitude
 			axes['longitude'] = self.longitude
-			self.variables[variableName] = Variable(axes, self._raw)
+			location = {'shortName' : variableName}
+			self.variables[variableName] = Variable(axes, {}, location, self._raw)
 
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :
@@ -102,30 +107,83 @@ class File(aa.File) :
 	
 
 class Variable(aa.Variable) :
-	def __init__(self, axes, rawFile) :
+	def __init__(self, axes, metadata, conditions, rawFile) :
 		super(Variable, self).__init__()
-		self._raw = rawFile
 		self.axes = axes
+		self.metadata = metadata
+		self.conditions = conditions
+		self._raw = rawFile
 	
 	def __call__(self, **kwargs) :
-		# the standard way to extract a subset
-		raise NotImplemented
+		"Extract a subset via its axes"
+		# if the variable is still in pure grib mode
+		if "_data" not in self.__dict__ :
+			newConditions = {}
+			newAxes = OrderedDict()
+			for axisName, axis in self.axes.iteritems() :
+				if axisName in kwargs.keys() :
+					# should a range of indices be extracted ?
+					if type(kwargs[axisName]) == tuple :
+						newConditions[axisName] = aa.glazier(kwargs[axisName])
+						mask = np.vectorize(newConditions[axisName])(
+									self.axes[axisName])
+						newAxes[axisName] = aa.Axis(
+								self.axes[axisName][:][mask],
+								self.axes[axisName].units)
+						# you can't select grib messages based on lat/lon
+						# the grib message contains the lat/lon numpy array
+						# will extract the appropriate region by slicing it
+						if axisName in ['latitude', 'longitude'] :
+							newConditions[axisName] = mask
+					# extract a single index only
+					else :
+						newConditions[axisName] = kwargs[axisName]
+						if axisName in ['latitude', 'longitude'] :
+							newConditions[axisName] = np.argmax(
+								self.axes[axisName] == kwargs[axisName])
+				# no conditions on this axis : transfer it untouched
+				else :
+					newAxes[axisName] = self.axes[axisName]
+			return Variable(newAxes, self.metadata, newConditions, self._raw)
+		else :
+			super(Variable, self).__call__(**kwargs)
 	
-	def get_data(self) :
+	
+	def _get_data(self) :
 		"Loads variable.data ; a waste of time for most uses"
-		self._data = np.empty(
-				(len(self.time), len(self.level),
-				len(self.latitude), len(self.longitude)),
-				dtype=float)
-		source = f._raw.select(shortName=attributeName)
-		for timeIndex in range(len(self.time)) :
-			for levelIndex in range(len(self.level)) :
-				self._data[timeIndex, levelIndex] = source[timeIndex].values
+		if '_data' not in self.__dict__ :
+			newConditions = self.conditions.copy()
+			if 'time' in self.conditions.keys() :
+				newConditions['analDate'] = newConditions['time']
+				del newConditions['time']
+			mask = []
+			if 'latitude' in self.conditions.keys() :
+				del newConditions['latitude']
+				mask.append(self.conditions['latitude'])
+			else :
+				mask.append(slice(None))
+			if 'longitude' in self.conditions.keys() :
+				del newConditions['longitude']
+				mask.append(self.conditions['longitude'])
+			else :
+				mask.append(slice(None))
+			gribLines = self._raw.select(**newConditions)
+			shape = ()
+			for axisName, axis in self.axes.iteritems() :
+				shape = shape + (len(axis),)
+			self._data = np.empty(shape, dtype=float)
+			# flatten time and levels
+			self._data.shape = (-1,) + self._data.shape[-2:]
+			# bug in numpy, does not understand : array([bools, bools])
+			for lineIndex, gribLine in enumerate(gribLines) :	
+				self._data[lineIndex] = gribLine.values[mask[0], :][:, mask[1]]
+			self._data.shape = shape
 		return self._data
-	def set_data(self, newValue) :
+	def _set_data(self, newValue) :
 		self._data = newValue
-	data = property(get_data, set_data)
-		
+	data = property(_get_data, _set_data)
+
+
 	def __getitem__(self, *args, **kwargs) :
 		# only if indices are used specifically must the whole data be loaded
 		return self.data.__getitem__(*args, **kwargs)

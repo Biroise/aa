@@ -3,10 +3,8 @@
 An interface between scipy, pygrib and matplotlib's basemap
 """
 
-from datetime import datetime
-from collections import OrderedDict
-
 from variable import Variable
+from variable import glazier
 from axis import Axis
 from axis import TimeAxis
 from axis import month

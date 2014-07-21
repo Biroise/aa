@@ -1,5 +1,6 @@
 
 import numpy as np
+import operator as op
 from collections import OrderedDict
 from mpl_toolkits.basemap import Basemap
 
@@ -7,16 +8,47 @@ class Variable(object) :
 	def __init__(self) :
 		self.axes = OrderedDict()
 
+	@property
+	def data(self) :
+		raise NotImplementedError
+
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :
 			return self.axes[attributeName]
 		else :
 			raise AttributeError
 
-	def __call__() :
-		raise NotImplementedError
-	
-	def get_basemap(self) :
+	def __call__(self, **kwargs) :
+		multipleSlice = []
+		outputAxes = OrderedDict()
+		for axisName, axis in self.axes.iteritems() :
+			# must this axis be sliced ?
+			if axisName in kwargs.keys() :
+				# should a range of indices be extracted ?
+				if type(kwargs[axisName]) == tuple :
+					window = np.vectorize(glazier(kwargs[axisName]))	
+					# now extract the sub-axis corresponding to the conditions
+					mask = window(self.axes[axisName][:])
+					outputAxes[axisName] = aa.Axis(
+							self.axes[axisName][:][mask],
+							self.axes[axisName].units)
+				# extract a single index only
+				else :
+					mask = np.argmax(
+						self.axes[axisName][:] == kwargs[axisName])
+					if mask == 0 and \
+							self.axes[axisName][0] != kwargs[axisName] :
+						print "No match in " + axisName
+						return None
+					# don't add this axis to outputAxes
+			# leave the axis untouched
+			else :
+				mask = slice(None)
+				outputAxes[axisName] = self.axes[axisName]
+			multipleSlice.append(mask)
+		return Variable(self[:][multipleSlice], self.metadata, outputAxes)
+
+	def _get_basemap(self) :
 		# assign to self a standard basemap
 		self._basemap = Basemap(
 				projection = 'cyl',
@@ -25,10 +57,10 @@ class Variable(object) :
 				urcrnrlon = self.longitude.data.max(),
 				urcrnrlat = self.latitude.data.max())
 		return self._basemap
-	def set_basemap(self, someMap) :
+	def _set_basemap(self, someMap) :
 		# user may set basemap himself
 		self._basemap = someMap
-	basemap = property(get_basemap, set_basemap)
+	basemap = property(_get_basemap, _set_basemap)
 
 	@property
 	def plot(self) :
@@ -46,6 +78,31 @@ class Variable(object) :
 				return self.basemap.pcolormesh(x, y, self.data)
 		else :
 			print "Variable has too many axes or none"
+
+
+def glazier(conditions) :
+	"The glazier makes windows : functions that test if conditions are met"
+	# if the user does not provide the type of boundaries
+	if len(conditions) == 2 :
+		# default boundaries are "closed-closed" unlike numpy
+		conditions = conditions + ('cc',)
+	# if the lower boundary is closed...
+	if conditions[2][0] == 'c' :
+		lowerCondition = op.ge
+	else :
+		lowerCondition = op.gt
+	# if the upper boundary is closed...
+	if conditions[2][1] == 'c' :
+		upperCondition = op.le
+	else :
+		upperCondition = op.lt
+	# extract the sub-axis related to the newConditions
+	def window(x) :
+		return lowerCondition(
+				x, conditions[0]) and \
+			upperCondition(
+				x, conditions[1])
+	return window
 
 levelNames = ['level', 'levels', 'lev']
 latitudeNames = ['latitude', 'latitudes', 'lat']

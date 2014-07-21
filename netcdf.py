@@ -44,61 +44,10 @@ class File(aa.File) :
 class Variable(aa.Variable) :
 	def __init__(self, data, metadata, axes) :
 		super(Variable, self).__init__()
-		self.data = data
+		self._data = data
 		self.metadata = metadata
 		self.axes = axes
 	
 	def __getitem__(self, *args, **kwargs) :
 		return self.data.__getitem__(*args, **kwargs)
-
-	def __call__(self, **kwargs) :
-		multipleSlice = []
-		outputAxes = aa.OrderedDict()
-		for axisName, axis in self.axes.iteritems() :
-			# must this axis be sliced ?
-			if axisName in kwargs.keys() :
-				# should a range of indices be extracted ?
-				if type(kwargs[axisName]) == tuple :
-					# if the user does not provide the type of boundaries
-					if len(kwargs[axisName]) == 2 :
-						# default boundaries are "closed-closed" unlike numpy
-						kwargs[axisName] = kwargs[axisName] + ('cc')
-					# if the lower boundary is closed...
-					if kwargs[axisName][2][0] == 'c' :
-						lowerCondition = op.ge
-					else :
-						lowerCondition = op.gt
-					# if the upper boundary is closed...
-					if kwargs[axisName][2][1] == 'c' :
-						upperCondition = op.le
-					else :
-						upperCondition = op.lt
-					# now extract the sub-axis corresponding to the conditions
-					mask = np.logical_and(
-							lowerCondition(
-								self.axes[axisName][:],
-								kwargs[axisName][0]),
-							upperCondition(
-								self.axes[axisName][:],
-								kwargs[axisName][1]))
-					outputAxes[axisName] = aa.Axis(
-							self.axes[axisName][:][mask],
-							self.axes[axisName].units)
-				# extract a single index only
-				else :
-					mask = np.argmax(
-						self.axes[axisName][:] == kwargs[axisName])
-					if mask == 0 and \
-							self.axes[axisName][0] != kwargs[axisName] :
-						print "No match in " + axisName
-						return None
-					# don't add this axis to outputAxes
-			# leave the axis untouched
-			else :
-				mask = slice(None)
-				outputAxes[axisName] = self.axes[axisName]
-			multipleSlice.append(mask)
-		return Variable(self[:][multipleSlice], self.metadata, outputAxes)
-
-	
 
