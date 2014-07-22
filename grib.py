@@ -118,7 +118,7 @@ class Variable(aa.Variable) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode
 		if "_data" not in self.__dict__ :
-			newConditions = {}
+			newConditions = self.conditions
 			newAxes = OrderedDict()
 			for axisName, axis in self.axes.iteritems() :
 				if axisName in kwargs.keys() :
@@ -134,7 +134,9 @@ class Variable(aa.Variable) :
 						# the grib message contains the lat/lon numpy array
 						# will extract the appropriate region by slicing it
 						if axisName in ['latitude', 'longitude'] :
-							newConditions[axisName] = mask
+							newConditions[axisName] = slice(
+								np.argmax(mask),
+								len(mask) - np.argmax(mask[::-1]))
 					# extract a single index only
 					else :
 						newConditions[axisName] = kwargs[axisName]
@@ -146,7 +148,7 @@ class Variable(aa.Variable) :
 					newAxes[axisName] = self.axes[axisName]
 			return Variable(newAxes, self.metadata, newConditions, self._raw)
 		else :
-			super(Variable, self).__call__(**kwargs)
+			return super(Variable, self).__call__(**kwargs)
 	
 	
 	def _get_data(self) :
@@ -174,9 +176,8 @@ class Variable(aa.Variable) :
 			self._data = np.empty(shape, dtype=float)
 			# flatten time and levels
 			self._data.shape = (-1,) + self._data.shape[-2:]
-			# bug in numpy, does not understand : array([bools, bools])
 			for lineIndex, gribLine in enumerate(gribLines) :	
-				self._data[lineIndex] = gribLine.values[mask[0], :][:, mask[1]]
+				self._data[lineIndex] = gribLine.values[mask]
 			self._data.shape = shape
 		return self._data
 	def _set_data(self, newValue) :

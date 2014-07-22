@@ -3,6 +3,7 @@ import aa
 import numpy as np
 import netCDF4 as nc
 import operator as op
+from collections import OrderedDict
 #from scipy.io.netcdf import netcdf_file
 
 
@@ -31,7 +32,7 @@ class File(aa.File) :
 		#############
 		for variableName in set(self._raw.variables.keys()) \
 				- set(self._raw.dimensions.keys()) :
-			variableAxes = aa.OrderedDict()
+			variableAxes = OrderedDict()
 			for axisName in self._raw.variables[variableName].dimensions :
 				if axisName in self.axes.keys() :
 					variableAxes[axisName] = self.axes[axisName]
@@ -50,4 +51,11 @@ class Variable(aa.Variable) :
 	
 	def __getitem__(self, *args, **kwargs) :
 		return self.data.__getitem__(*args, **kwargs)
+	
+	def _get_data(self) :
+		return self._data
+	def _set_data(self, newValue) :
+		self._data = newValue
+	data = property(_get_data, _set_data)
+		
 

@@ -1,17 +1,25 @@
 
+import aa
 import numpy as np
 import operator as op
 from collections import OrderedDict
 from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+
 
 class Variable(object) :
-	def __init__(self) :
-		self.axes = OrderedDict()
+	def __init__(self, data=None, metadata={}, axes=OrderedDict()) :
+		self.axes = axes
+		self.metadata = metadata
+		if data != None :
+			self._data = data
 
-	@property
-	def data(self) :
-		raise NotImplementedError
-
+	def _get_data(self) :
+		return self._data
+	def _set_data(self, newValue) :
+		self._data = newValue
+	data = property(_get_data, _set_data)
+		
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :
 			return self.axes[attributeName]
@@ -29,24 +37,27 @@ class Variable(object) :
 					window = np.vectorize(glazier(kwargs[axisName]))	
 					# now extract the sub-axis corresponding to the conditions
 					mask = window(self.axes[axisName][:])
+					item = slice(
+							np.argmax(mask),
+							len(mask) - np.argmax(mask[::-1]))
 					outputAxes[axisName] = aa.Axis(
-							self.axes[axisName][:][mask],
+							self.axes[axisName][mask],
 							self.axes[axisName].units)
 				# extract a single index only
 				else :
-					mask = np.argmax(
+					item = np.argmax(
 						self.axes[axisName][:] == kwargs[axisName])
-					if mask == 0 and \
+					if item == 0 and \
 							self.axes[axisName][0] != kwargs[axisName] :
 						print "No match in " + axisName
 						return None
 					# don't add this axis to outputAxes
 			# leave the axis untouched
 			else :
-				mask = slice(None)
+				item = slice(None)
 				outputAxes[axisName] = self.axes[axisName]
-			multipleSlice.append(mask)
-		return Variable(self[:][multipleSlice], self.metadata, outputAxes)
+			multipleSlice.append(item)
+		return Variable(self.data[multipleSlice], self.metadata, outputAxes)
 
 	def _get_basemap(self) :
 		# assign to self a standard basemap
@@ -103,6 +114,7 @@ def glazier(conditions) :
 			upperCondition(
 				x, conditions[1])
 	return window
+
 
 levelNames = ['level', 'levels', 'lev']
 latitudeNames = ['latitude', 'latitudes', 'lat']
