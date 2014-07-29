@@ -97,15 +97,6 @@ class File(aa.File) :
 			location = {'shortName' : variableName}
 			self.variables[variableName] = Variable(axes, {}, location, self._raw)
 
-	def __getattr__(self, attributeName) :
-		if attributeName in self.axes.keys() :
-			return self.axes[attributeName]
-		elif attributeName in self.variables.keys() :
-			return self.variables[attributeName]
-		else :
-			raise AttributeError
-	
-
 class Variable(aa.Variable) :
 	def __init__(self, axes, metadata, conditions, rawFile) :
 		super(Variable, self).__init__()

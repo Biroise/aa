@@ -7,7 +7,7 @@ from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 
 
-class Variable(object) :
+class Variable(aa.DataMedium) :
 	def __init__(self, data=None, metadata={}, axes=OrderedDict()) :
 		self.axes = axes
 		self.metadata = metadata
@@ -20,12 +20,6 @@ class Variable(object) :
 		self._data = newValue
 	data = property(_get_data, _set_data)
 		
-	def __getattr__(self, attributeName) :
-		if attributeName in self.axes.keys() :
-			return self.axes[attributeName]
-		else :
-			raise AttributeError
-
 	def __call__(self, **kwargs) :
 		multipleSlice = []
 		outputAxes = OrderedDict()
@@ -58,6 +52,9 @@ class Variable(object) :
 				outputAxes[axisName] = self.axes[axisName]
 			multipleSlice.append(item)
 		return Variable(self.data[multipleSlice], self.metadata, outputAxes)
+	
+	def mean(self, axes) :
+		return NotImplementedError
 
 	def _get_basemap(self) :
 		# assign to self a standard basemap

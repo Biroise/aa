@@ -9,8 +9,30 @@ from axis import Axis
 from axis import TimeAxis
 from axis import month
 
+class DataMedium(object) :
+	def __getattr__(self, attributeName) :
+		if attributeName in self.axes.keys() :
+			return self.axes[attributeName]
+		if attributeName in self.axes.keys() :
+			return self.axes[attributeName]
+		if attributeName == 't' :
+			return self.time
+		if attributeName == 'lat' :
+			return self.latitude :
+		if attributeName == 'lon' :
+			return self.longitude
+		if attributeName == 'lev' :
+			return self.level
+		if attributeName == 'levels' :
+			return self.level
+		if attributeName == 'level' :
+			return self.levels
+		else :
+			raise AttributeError
 
-class File(object) :
+
+
+class File(DataMedium) :
 	def __init__(self) :
 		self.axes = {}
 		self.variables = {}
@@ -18,16 +40,9 @@ class File(object) :
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :
 			return self.axes[attributeName]
-		elif attributeName in self.variables.keys() :
+		if attributeName in self.variables.keys() :
 			return self.variables[attributeName]
-		else :
-			raise AttributeError
-	
-	def __getitem__(self, argument) :
-		if argument in self.axes.keys() :
-			return self.axes[argument]
-		if argument in self.variables.keys() :
-			return self.variables[argument]
+		return super(File, self).__getattr__(self, attributeName)
 
 	def close(self) :
 		self._raw.close()
