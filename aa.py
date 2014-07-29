@@ -18,8 +18,6 @@ class DataMedium(object) :
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :
 			return self.axes[attributeName]
-		if attributeName in self.axes.keys() :
-			return self.axes[attributeName]
 		if attributeName == 't' :
 			return self.time
 		if attributeName == 'lat' :
@@ -48,11 +46,12 @@ class File(DataMedium) :
 		self.variables = {}
 
 	def __getattr__(self, attributeName) :
-		if attributeName in self.axes.keys() :
-			return self.axes[attributeName]
 		if attributeName in self.variables.keys() :
 			return self.variables[attributeName]
 		return super(File, self).__getattr__(self, attributeName)
+	
+	def __getitem__(self, item) :
+		return getattr(self, item)
 
 	def close(self) :
 		self._raw.close()
