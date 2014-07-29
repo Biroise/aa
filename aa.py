@@ -18,26 +18,23 @@ class DataMedium(object) :
 	def __getattr__(self, attributeName) :
 		if attributeName in self.axes.keys() :
 			return self.axes[attributeName]
-		if attributeName == 't' :
-			return self.time
-		if attributeName == 'lat' :
-			return self.latitude
-		if attributeName == 'lon' :
-			return self.longitude
-		if attributeName == 'lev' :
-			return self.level
-		if attributeName == 'levels' :
-			return self.level
-		if attributeName == 'level' :
-			return self.levels
-		if attributeName == 'lats' :
-			return self.latitude[:]
-		if attributeName == 'lons' :
-			return self.longitude[:]
-		if attributeName == 'levs' :
-			return self.level[:]
-		else :
-			raise AttributeError
+		# dealing with the most common aliases
+		latitudeNames = ['latitude', 'latitudes', 'lat']
+		longitudeNames = ['longitude', 'longitudes', 'lon']
+		levelNames = ['level', 'levels', 'lev']
+		axesNames = [latitudeNames, longitudeNames, levelNames]
+		for axisNames in axesNames :
+			if attributeName in axisNames :
+				for axisName in axisNames :
+					if axisName in self.axes.keys() :
+						return self.axes[axisName]
+		# returns the array of coordinates instead of the axis object
+		if attributeName in ['lats', 'lons', 'levs'] :
+			return getattr(self, attributeName[:-1])[:]
+		if attributeName == 'dts' :
+			return getattr(self, 'time')[:]
+		# if no cases fit
+		raise AttributeError
 
 
 class File(DataMedium) :
@@ -48,7 +45,7 @@ class File(DataMedium) :
 	def __getattr__(self, attributeName) :
 		if attributeName in self.variables.keys() :
 			return self.variables[attributeName]
-		return super(File, self).__getattr__(self, attributeName)
+		return super(File, self).__getattr__(attributeName)
 	
 	def __getitem__(self, item) :
 		return getattr(self, item)
@@ -56,6 +53,7 @@ class File(DataMedium) :
 	def close(self) :
 		self._raw.close()
 		del self
+
 
 class Variable(DataMedium) :
 	def __init__(self, data=None, metadata={}, axes=OrderedDict()) :
@@ -69,6 +67,13 @@ class Variable(DataMedium) :
 	def _set_data(self, newValue) :
 		self._data = newValue
 	data = property(_get_data, _set_data)
+
+	def __getitem__(self, item) :
+		if isinstance(self.data, np.ndarray) :
+			return self.data[item]
+		# in case of scalar variables
+		else :
+			return self.data
 		
 	def __call__(self, **kwargs) :
 		multipleSlice = []
@@ -165,10 +170,10 @@ def glazier(conditions) :
 def open(filePath) :
 	"Picks the appropriate File subclass to model a gridded data file"
 	if filePath.endswith('nc') :
-		import netcdf
+		from aatk import netcdf
 		return netcdf.File(filePath)
 	if filePath.endswith('grib') :
-		import grib
+		from aatk import grib
 		return grib.File(filePath)
 
 

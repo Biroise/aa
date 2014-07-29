@@ -30,21 +30,28 @@ class File(aa.File) :
 		#################
 		# VERTICAL AXIS #
 		#################
-		# sometimes 2D data is followed by 3D data e.g. jra25
-		variableLevels = {}	# variable and level type
-		verticalExtensions = {} 	# level type and list of levels
+		# sometimes there are several types of level
+		# 2D data is followed by 3D data e.g. jra25
+		variableLevels = {}					# variable and level type
+		verticalExtensions = {} 			# level type and list of levels
 		gribLine = self._raw.readline()
+		# loop through the variables and levels of the first time step
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
 					== firstInstant :
+			# is it the first time this type of level is met ?
 			if gribLine.typeOfLevel not in verticalExtensions.keys() :
 				verticalExtensions[gribLine.typeOfLevel] = [gribLine.level]
-			else :
+			# the level type already exists : does this particular level too ?
+			elif gribLine.level not in \
+					verticalExtensions[gribLine.typeOfLevel] :
 				verticalExtensions[gribLine.typeOfLevel].append(gribLine.level)
+			# is it the first time this variable is met ?
 			if gribLine.shortName not in variableLevels.keys() :
 				variableLevels[gribLine.shortName] = gribLine.typeOfLevel
+			# move to the next line
 			gribLine = self._raw.readline()
-		# create a vertical axis if number of levels is credible
+		# create a vertical axis if the number of levels is credible
 		for levelType, levels in verticalExtensions.iteritems() :
 			if len(levels) > 1 :
 				self.level = aa.Axis(levels, levelType)
