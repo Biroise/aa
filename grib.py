@@ -124,7 +124,7 @@ class Variable(aa.Variable) :
 				# horizontal slices tap straight into a numpy array
 				if axisName in ['latitude', 'longitude'] :
 					if axisName in newConditions :
-						raise NotImplemented
+						raise NotImplementedError
 					else :
 						newConditions[axisName] = item
 				# time and level slices need to be made explicit
@@ -137,7 +137,6 @@ class Variable(aa.Variable) :
 			return Variable(newAxes, self.metadata, newConditions, self._raw)
 		else :
 			return super(Variable, self).__call__(**kwargs)
-	
 	
 	def _get_data(self) :
 		"Loads variable.data ; a waste of time for most uses"
@@ -152,9 +151,19 @@ class Variable(aa.Variable) :
 				mask.append(self.conditions['latitude'])
 			else :
 				mask.append(slice(None))
+			twistedLongitudes = False
 			if 'longitude' in self.conditions.keys() :
 				del newConditions['longitude']
-				mask.append(self.conditions['longitude'])
+				# twisted longitudes...
+				if type(self.conditions['longitude']) == tuple :
+					twistedLongitudes = True
+					secondMask = mask[:]
+					mask.append(self.conditions['longitude'][0])
+					slice1 = slice(0, -mask[-1].start)
+					secondMask.append(self.conditions['longitude'][1])
+					slice2 = slice(-secondMask[-1].stop, None)
+				else :
+					mask.append(self.conditions['longitude'])
 			else :
 				mask.append(slice(None))
 			gribLines = self._raw.select(**newConditions)
@@ -164,16 +173,18 @@ class Variable(aa.Variable) :
 			self._data = np.empty(shape, dtype=float)
 			# flatten time and levels
 			self._data.shape = (-1,) + self._data.shape[-2:]
-			for lineIndex, gribLine in enumerate(gribLines) :	
-				self._data[lineIndex] = gribLine.values[mask]
+			if twistedLongitudes :
+				for lineIndex, gribLine in enumerate(gribLines) :	
+					self._data[lineIndex, ..., slice1] = \
+						gribLine.values[mask]
+					self._data[lineIndex, ..., slice2] = \
+						gribLine.values[secondMask]
+			else :
+				for lineIndex, gribLine in enumerate(gribLines) :	
+					self._data[lineIndex] = gribLine.values[mask]
 			self._data.shape = shape
 		return self._data
 	def _set_data(self, newValue) :
 		self._data = newValue
 	data = property(_get_data, _set_data)
-
-
-	def __getitem__(self, *args, **kwargs) :
-		# only if indices are used specifically must the whole data be loaded
-		return self.data.__getitem__(*args, **kwargs)
 

@@ -34,26 +34,27 @@ class Axis(object) :
 			else :
 				upperCondition = op.lt
 			# extract the sub-axis related to the newConditions
-			@np.vectorize
-			def window(x) :
-				return lowerCondition(
-						x, condition[0]) and \
-					upperCondition(
-						x, condition[1])
+			mask = np.logical_and(
+				lowerCondition(self[:] - condition[0], 0),
+				upperCondition(self[:] - condition[0], 
+					condition[1]-condition[0]))
 			# now extract the sub-axis corresponding to the condition
-			mask = window(self[:])
-			item = slice(
-					np.argmax(mask),
-					len(mask) - np.argmax(mask[::-1]))
-			newAxis = Axis(self[mask], self.units)
-			return item, newAxis
+			return self.make_slice(mask)
 		# extract a single index only
 		else :
-			index = np.argmax(self[:] == condition)
-			if index == 0 and self[0] != condition :
-				print "No match in axis slice"
-			return index, None
+			return self.find_index(condition), None
 			# don't add this axis to newAxes
+
+	def make_slice(self, mask) :
+		return (slice(np.argmax(mask),
+				len(mask) - np.argmax(mask[::-1])),
+			Axis(self[mask], self.units))
+
+	def find_index(self, condition) :
+		index = np.argmax(self[:] == condition)
+		if index == 0 and self[0] != condition :
+			print IndexError
+		return index
 
 
 class TimeAxis(Axis) :
@@ -84,6 +85,10 @@ class Longitudes(np.ndarray) :
 		return super(Longitudes, self%360).__lt__(toBeCompared%360)
 	def __le__(self, toBeCompared) :
 		return super(Longitudes, self%360).__le__(toBeCompared%360)
+	def __sub__(self, toSubstract) :
+		return super(Longitudes,
+				(super(Longitudes, self).__sub__(toSubstract) + 180)%360
+			).__sub__(180)
 
 
 class Parallel(Axis) :
@@ -91,6 +96,21 @@ class Parallel(Axis) :
 	def __init__(self, data, units) :
 		self.data = data.view(Longitudes)
 		self.units = units
+	
+	def make_slice(self, mask) :
+		# selected longitudes are at the beginning and end of the axis
+		if mask[0] and mask[-1] and not mask.all() :
+			# first slice, the end part
+			firstSlice = slice(-np.argmax(~mask[::-1]), None)
+			secondSlice = slice(0, np.argmax(~mask)) 
+			return ((firstSlice, secondSlice), 
+				Axis(np.hstack((
+						self[firstSlice], 
+						self[secondSlice])),
+					self.units))
+		else :
+			return super(Parallel, self).make_slice(mask)
+
 
 def month(year, monthIndex) :
 	return (datetime(year, monthIndex, 1),

@@ -85,6 +85,18 @@ class Variable(DataMedium) :
 				del newAxes[axisName]
 			else :
 				newAxes[axisName] = newAxis
+		# twisted longitudes...
+		if 'longitude' in kwargs.keys() :
+			if type(slices['longitude']) == tuple :
+				secondSlices = slices.copy()
+				secondSlices['longitude'] = slices['longitude'][1]
+				slices['longitude'] = slices['longitude'][0]
+			# longitude is assumed to be the last axis
+			return Variable(
+					np.hstack((
+						self.data[slices.values()],
+						self.data[secondSlices.values()])),
+					self.metadata, newAxes)
 		return Variable(self.data[slices.values()], self.metadata, newAxes)
 	
 	def mean(self, axes) :
@@ -120,6 +132,7 @@ class Variable(DataMedium) :
 				return self.basemap.pcolormesh(x, y, self.data)
 		else :
 			print "Variable has too many axes or none"
+
 
 def open(filePath) :
 	"Picks the appropriate File subclass to model a gridded data file"
