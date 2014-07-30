@@ -6,9 +6,9 @@ An interface between scipy, pygrib and matplotlib's basemap
 from axis import Axis
 from axis import TimeAxis
 from axis import month
+from axis import Parallel
 
 import numpy as np
-import operator as op
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from mpl_toolkits.basemap import Basemap
@@ -76,37 +76,16 @@ class Variable(DataMedium) :
 			return self.data
 		
 	def __call__(self, **kwargs) :
-		multipleSlice = []
-		outputAxes = OrderedDict()
-		for axisName, axis in self.axes.iteritems() :
-			# must this axis be sliced ?
-			if axisName in kwargs.keys() :
-				# should a range of indices be extracted ?
-				if type(kwargs[axisName]) == tuple :
-					window = np.vectorize(glazier(kwargs[axisName]))	
-					# now extract the sub-axis corresponding to the conditions
-					mask = window(self.axes[axisName][:])
-					item = slice(
-							np.argmax(mask),
-							len(mask) - np.argmax(mask[::-1]))
-					outputAxes[axisName] = Axis(
-							self.axes[axisName][mask],
-							self.axes[axisName].units)
-				# extract a single index only
-				else :
-					item = np.argmax(
-						self.axes[axisName][:] == kwargs[axisName])
-					if item == 0 and \
-							self.axes[axisName][0] != kwargs[axisName] :
-						print "No match in " + axisName
-						return None
-					# don't add this axis to outputAxes
-			# leave the axis untouched
+		slices = {axisName:slice(None) for axisName in self.axes.keys()}
+		newAxes = self.axes.copy()
+		for axisName, condition in kwargs.iteritems() :
+			item, newAxis = self.axes[axisName](condition)
+			slices[axisName] = item
+			if newAxis == None :
+				del newAxes[axisName]
 			else :
-				item = slice(None)
-				outputAxes[axisName] = self.axes[axisName]
-			multipleSlice.append(item)
-		return Variable(self.data[multipleSlice], self.metadata, outputAxes)
+				newAxes[axisName] = newAxis
+		return Variable(self.data[slices.values()], self.metadata, newAxes)
 	
 	def mean(self, axes) :
 		return NotImplementedError
@@ -141,31 +120,6 @@ class Variable(DataMedium) :
 				return self.basemap.pcolormesh(x, y, self.data)
 		else :
 			print "Variable has too many axes or none"
-
-
-def glazier(conditions) :
-	"The glazier makes windows : functions that test if conditions are met"
-	# if the user does not provide the type of boundaries
-	if len(conditions) == 2 :
-		# default boundaries are "closed-closed" unlike numpy
-		conditions = conditions + ('cc',)
-	# if the lower boundary is closed...
-	if conditions[2][0] == 'c' :
-		lowerCondition = op.ge
-	else :
-		lowerCondition = op.gt
-	# if the upper boundary is closed...
-	if conditions[2][1] == 'c' :
-		upperCondition = op.le
-	else :
-		upperCondition = op.lt
-	# extract the sub-axis related to the newConditions
-	def window(x) :
-		return lowerCondition(
-				x, conditions[0]) and \
-			upperCondition(
-				x, conditions[1])
-	return window
 
 def open(filePath) :
 	"Picks the appropriate File subclass to model a gridded data file"

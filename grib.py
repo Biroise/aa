@@ -54,7 +54,7 @@ class File(aa.File) :
 		# create a vertical axis if the number of levels is credible
 		for levelType, levels in verticalExtensions.iteritems() :
 			if len(levels) > 1 :
-				self.level = aa.Axis(levels, levelType)
+				self.level = aa.Axis(np.array(levels), levelType)
 				verticalExtensions[levelType] = True
 			else :
 				verticalExtensions[levelType] = False
@@ -72,8 +72,8 @@ class File(aa.File) :
 		self._raw.seek(0, 2)
 		lastIndex = self._raw.tell()
 		self.time = aa.TimeAxis(
-				[firstInstant + timeIndex*timeStep
-					for timeIndex in range(lastIndex/linesPerInstant)],
+				np.array([firstInstant + timeIndex*timeStep
+					for timeIndex in range(lastIndex/linesPerInstant)]),
 				None)
 		# check consistency
 		gribLine = self._raw.message(lastIndex)
@@ -104,6 +104,7 @@ class File(aa.File) :
 			location = {'shortName' : variableName}
 			self.variables[variableName] = Variable(axes, {}, location, self._raw)
 
+
 class Variable(aa.Variable) :
 	def __init__(self, axes, metadata, conditions, rawFile) :
 		super(Variable, self).__init__()
@@ -116,34 +117,23 @@ class Variable(aa.Variable) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode
 		if "_data" not in self.__dict__ :
-			newConditions = self.conditions
-			newAxes = OrderedDict()
-			for axisName, axis in self.axes.iteritems() :
-				if axisName in kwargs.keys() :
-					# should a range of indices be extracted ?
-					if type(kwargs[axisName]) == tuple :
-						newConditions[axisName] = aa.glazier(kwargs[axisName])
-						mask = np.vectorize(newConditions[axisName])(
-									self.axes[axisName])
-						newAxes[axisName] = aa.Axis(
-								self.axes[axisName][:][mask],
-								self.axes[axisName].units)
-						# you can't select grib messages based on lat/lon
-						# the grib message contains the lat/lon numpy array
-						# will extract the appropriate region by slicing it
-						if axisName in ['latitude', 'longitude'] :
-							newConditions[axisName] = slice(
-								np.argmax(mask),
-								len(mask) - np.argmax(mask[::-1]))
-					# extract a single index only
+			newConditions = self.conditions.copy()
+			newAxes = self.axes.copy()
+			for axisName, condition in kwargs.iteritems() :
+				item, newAxis = self.axes[axisName](condition)
+				# horizontal slices tap straight into a numpy array
+				if axisName in ['latitude', 'longitude'] :
+					if axisName in newConditions :
+						raise NotImplemented
 					else :
-						newConditions[axisName] = kwargs[axisName]
-						if axisName in ['latitude', 'longitude'] :
-							newConditions[axisName] = np.argmax(
-								self.axes[axisName] == kwargs[axisName])
-				# no conditions on this axis : transfer it untouched
+						newConditions[axisName] = item
+				# time and level slices need to be made explicit
 				else :
-					newAxes[axisName] = self.axes[axisName]
+					newConditions[axisName] = self.axes[axisName][item]
+				if newAxis == None :
+					del newAxes[axisName]
+				else :
+					newAxes[axisName] = newAxis
 			return Variable(newAxes, self.metadata, newConditions, self._raw)
 		else :
 			return super(Variable, self).__call__(**kwargs)

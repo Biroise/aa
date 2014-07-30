@@ -1,5 +1,6 @@
 
 import numpy as np
+import operator as op
 from datetime import datetime
 from datetime import timedelta
 
@@ -14,6 +15,45 @@ class Axis(object) :
 
 	def __len__(self) :
 		return len(self.data)
+
+	def __call__(self, condition) :
+		# should a range of indices be extracted ?
+		if type(condition) == tuple :
+			# if the user does not provide the type of boundaries
+			if len(condition) == 2 :
+				# default boundaries are "closed-closed" unlike numpy
+				condition = condition + ('cc',)
+			# if the lower boundary is closed...
+			if condition[2][0] == 'c' :
+				lowerCondition = op.ge
+			else :
+				lowerCondition = op.gt
+			# if the upper boundary is closed...
+			if condition[2][1] == 'c' :
+				upperCondition = op.le
+			else :
+				upperCondition = op.lt
+			# extract the sub-axis related to the newConditions
+			@np.vectorize
+			def window(x) :
+				return lowerCondition(
+						x, condition[0]) and \
+					upperCondition(
+						x, condition[1])
+			# now extract the sub-axis corresponding to the condition
+			mask = window(self[:])
+			item = slice(
+					np.argmax(mask),
+					len(mask) - np.argmax(mask[::-1]))
+			newAxis = Axis(self[mask], self.units)
+			return item, newAxis
+		# extract a single index only
+		else :
+			index = np.argmax(self[:] == condition)
+			if index == 0 and self[0] != condition :
+				print "No match in axis slice"
+			return index, None
+			# don't add this axis to newAxes
 
 
 class TimeAxis(Axis) :
