@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime
 from datetime import timedelta
 
+
 class Axis(object) :
 	def __init__(self, data, units) :
 		self.data = data
@@ -31,6 +32,25 @@ class TimeAxis(Axis) :
 				[epoch + timedelta(**{units: offset})
 				for offset in self.data])
 
+
+class Longitudes(np.ndarray) :
+	def __eq__(self, toBeCompared) :
+		return super(Longitudes, self%360).__eq__(toBeCompared%360)
+	def __gt__(self, toBeCompared) :
+		return super(Longitudes, self%360).__gt__(toBeCompared%360)
+	def __ge__(self, toBeCompared) :
+		return super(Longitudes, self%360).__ge__(toBeCompared%360)
+	def __lt__(self, toBeCompared) :
+		return super(Longitudes, self%360).__lt__(toBeCompared%360)
+	def __le__(self, toBeCompared) :
+		return super(Longitudes, self%360).__le__(toBeCompared%360)
+
+
+class Parallel(Axis) :
+	# a parallel being the longitudinal axis
+	def __init__(self, data, units) :
+		self.data = data.view(Longitudes)
+		self.units = units
 
 def month(year, monthIndex) :
 	return (datetime(year, monthIndex, 1),

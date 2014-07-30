@@ -22,10 +22,10 @@ class File(aa.File) :
 		lats, lons = gribLine.latlons()
 		if lats[0, 0] == lats[0, 1] :
 			self.latitude = aa.Axis(lats[:, 0], 'degrees')
-			self.longitude = aa.Axis(lons[0, :], 'degrees')
+			self.longitude = aa.Parallel(lons[0, :], 'degrees')
 		else :
 			self.latitude = aa.Axis(lats[0, :], 'degrees')
-			self.longitude = aa.Axis(lons[:, 0], 'degrees')
+			self.longitude = aa.Parallel(lons[:, 0], 'degrees')
 		self._raw.rewind()
 		#################
 		# VERTICAL AXIS #

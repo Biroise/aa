@@ -17,16 +17,15 @@ class File(aa.File) :
 		# AXES #
 		########
 		for dimensionName in self._raw.dimensions.keys() :
-			if dimensionName == 'time' :
-				self.axes[dimensionName] = \
-					aa.TimeAxis(
-						self._raw.variables[dimensionName][:],
-						self._raw.variables[dimensionName].units)
-			elif dimensionName in self._raw.variables.keys() :
-				self.axes[dimensionName] = \
-					aa.Axis(
-						self._raw.variables[dimensionName][:],
-						self._raw.variables[dimensionName].units)
+			if dimensionName in self._raw.variables.keys() :
+				args = [self._raw.variables[dimensionName][:],
+							self._raw.variables[dimensionName].units]
+				if dimensionName == 'time' :
+					self.axes[dimensionName] = aa.TimeAxis(*args)
+				elif dimensionName in ['longitude', 'longitudes', 'lon'] :	
+					self.axes[dimensionName] = aa.Parallel(*args)
+				else :
+					self.axes[dimensionName] = aa.Axis(*args)
 		#############
 		# VARIABLES #
 		#############
