@@ -39,13 +39,13 @@ class Axis(object) :
 				upperCondition(self[:] - condition[0], 
 					condition[1]-condition[0]))
 			# now extract the sub-axis corresponding to the condition
-			return self.make_slice(mask)
+			return self.make_slice(mask, condition)
 		# extract a single index only
 		else :
 			return self.find_index(condition), None
 			# don't add this axis to newAxes
 
-	def make_slice(self, mask) :
+	def make_slice(self, mask, condition) :
 		return (slice(np.argmax(mask),
 				len(mask) - np.argmax(mask[::-1])),
 			Axis(self[mask], self.units))
@@ -97,19 +97,21 @@ class Parallel(Axis) :
 		self.data = data.view(Longitudes)
 		self.units = units
 	
-	def make_slice(self, mask) :
+	def make_slice(self, mask, condition) :
 		# selected longitudes are at the beginning and end of the axis
 		if mask[0] and mask[-1] and not mask.all() :
 			# first slice, the end part
 			firstSlice = slice(-np.argmax(~mask[::-1]), None)
+			firstOffset = -int((self[-1] - condition[0])/360)*360
 			secondSlice = slice(0, np.argmax(~mask)) 
+			secondOffset = -int((self[0] - condition[1])/360)*360
 			return ((firstSlice, secondSlice), 
 				Axis(np.hstack((
-						self[firstSlice], 
-						self[secondSlice])),
+						self[firstSlice] + firstOffset, 
+						self[secondSlice] - secondOffset)),
 					self.units))
 		else :
-			return super(Parallel, self).make_slice(mask)
+			return super(Parallel, self).make_slice(mask, condition)
 
 
 def month(year, monthIndex) :
