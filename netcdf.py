@@ -9,10 +9,10 @@ from collections import OrderedDict
 
 
 class File(aa.File) :
-	def __init__(self, filePath) :
+	def __init__(self, filePath, mode) :
 		super(File, self).__init__()
 		#self._raw = netcdf_file(filePath)
-		self._raw = nc.Dataset(filePath)
+		self._raw = nc.Dataset(filePath, mode)
 		########
 		# AXES #
 		########
@@ -42,19 +42,5 @@ class File(aa.File) :
 
 
 class Variable(aa.Variable) :
-	def __init__(self, data, metadata, axes) :
-		super(Variable, self).__init__()
-		self._data = data
-		self.metadata = metadata
-		self.axes = axes
-	
-	def __getitem__(self, *args, **kwargs) :
-		return self.data.__getitem__(*args, **kwargs)
-	
-	def _get_data(self) :
-		return self._data
-	def _set_data(self, newValue) :
-		self._data = newValue
-	data = property(_get_data, _set_data)
-		
+	pass
 

@@ -77,6 +77,7 @@ class Variable(DataMedium) :
 			return self.data
 	def __setitem__(self, item, value) :		
 		if isinstance(self.data, np.ndarray) :
+			self.data[item] = value
 		else :
 			self.data = value
 	
@@ -139,11 +140,11 @@ class Variable(DataMedium) :
 			print "Variable has too many axes or none"
 
 
-def open(filePath) :
+def open(filePath, mode='r') :
 	"Picks the appropriate File subclass to model a gridded data file"
 	if filePath.endswith('nc') :
 		from aatk import netcdf
-		return netcdf.File(filePath)
+		return netcdf.File(filePath, mode)
 	if filePath.endswith('grib') :
 		from aatk import grib
 		return grib.File(filePath)
