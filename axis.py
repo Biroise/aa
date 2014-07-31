@@ -12,6 +12,8 @@ class Axis(object) :
 	
 	def __getitem__(self, *args, **kwargs) :
 		return self.data.__getitem__(*args, **kwargs)
+	def __setitem(self, *args, **kwargs) :
+		return self.data.__getitem__(*args, **kwargs)
 
 	def __len__(self) :
 		return len(self.data)
