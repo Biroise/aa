@@ -69,12 +69,17 @@ class Variable(DataMedium) :
 	data = property(_get_data, _set_data)
 
 	def __getitem__(self, item) :
+		# standard case : slicing an array
 		if isinstance(self.data, np.ndarray) :
 			return self.data[item]
-		# in case of scalar variables
+		# in case of scalar variables sliced with ":"
 		else :
 			return self.data
-		
+	def __setitem__(self, item, value) :		
+		if isinstance(self.data, np.ndarray) :
+		else :
+			self.data = value
+	
 	def __call__(self, **kwargs) :
 		slices = {axisName:slice(None) for axisName in self.axes.keys()}
 		newAxes = self.axes.copy()
