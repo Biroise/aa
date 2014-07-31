@@ -111,7 +111,10 @@ class Parallel(Axis) :
 						self[secondSlice] - secondOffset)),
 					self.units))
 		else :
-			return super(Parallel, self).make_slice(mask, condition)
+			return (slice(np.argmax(mask), len(mask) - np.argmax(mask[::-1])),
+				Axis(
+					self[mask]-int((self[mask][-1] - condition[0])/360)*360,
+					self.units))
 
 
 def month(year, monthIndex) :
