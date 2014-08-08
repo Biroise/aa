@@ -94,10 +94,10 @@ class File(aa.File) :
 				axes['level'] = self.axes['level']
 			axes['latitude'] = self.axes['latitude']
 			axes['longitude'] = self.axes['longitude']
-			location = {'shortName' : variableName,
-					'typeOfLevel' : self.axes['level'].units}
+			location = {'shortName' : variableName.encode('ascii'),
+					'typeOfLevel' : levelType.encode('ascii')}
 			self.variables[variableName] = \
-					Variable(axes, {}, location, fileName)
+					Variable(axes, {}, location.copy(), fileName)
 		##################
 		# PICKLE & INDEX #
 		##################
@@ -160,7 +160,8 @@ class Variable(aa.Variable) :
 				# otherwise, load newAxis in the new variable's axes
 				else :
 					newAxes[axisName] = newAxis
-			return Variable(newAxes, self.metadata, newConditions, self.fileName)
+			return Variable(newAxes, self.metadata,
+						newConditions, self.fileName)
 		# if _data already exists (as a numpy array), follow standard protocol
 		else :
 			return super(Variable, self).__call__(**kwargs)
@@ -175,6 +176,13 @@ class Variable(aa.Variable) :
 				newConditions['day'] = newConditions['time'].day
 				newConditions['hour'] = newConditions['time'].hour
 				del newConditions['time']
+			if 'level' in self.conditions :
+				kind = newConditions['level'].dtype.kind
+				if kind == 'i' :
+					standardType = int
+				elif kind == 'f' :
+					standardType = float
+				newConditions['level'] = standardType(newConditions['level'])
 			mask = []
 			if 'latitude' in self.conditions :
 				del newConditions['latitude']
@@ -197,11 +205,7 @@ class Variable(aa.Variable) :
 			else :
 				mask.append(slice(None))
 			gribIndex = pygrib.index(self.fileName+'.idx')
-			print newConditions
 			gribLines = gribIndex(**newConditions)
-			#gribLines = gribIndex(hour=12, day=1, year=1979, month=1, shortName='q',
-				#typeOfLevel='isobaricInhPa', level=1000)
-			print gribLines
 			gribIndex.close()
 			shape = ()
 			for axisName, axis in self.axes.iteritems() :
