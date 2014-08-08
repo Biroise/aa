@@ -21,7 +21,7 @@ class Axes(OrderedDict) :
 					Axes.aliases[attributeName], value)
 		if attributeName in Axes.shortcuts :
 			return super(Axes, self).__setitem__(
-					Axes.aliases[attributeName], value)
+					Axes.shortcuts[attributeName], value)
 
 	def __getitem__(self, attributeName) :
 		# dealing with the most common aliases
@@ -30,7 +30,7 @@ class Axes(OrderedDict) :
 					Axes.aliases[attributeName])
 		if attributeName in Axes.shortcuts :
 			return super(Axes, self).__getitem__(
-					Axes.aliases[attributeName])[:]
+					Axes.shortcuts[attributeName])[:]
 		# if no cases fit
 		raise AttributeError
 

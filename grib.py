@@ -95,7 +95,7 @@ class File(aa.File) :
 			axes['latitude'] = self.axes['latitude']
 			axes['longitude'] = self.axes['longitude']
 			location = {'shortName' : variableName,
-					'typeOfLevel' : self.axes['level']}
+					'typeOfLevel' : self.axes['level'].units}
 			self.variables[variableName] = \
 					Variable(axes, {}, location, fileName)
 		##################
@@ -113,7 +113,7 @@ class File(aa.File) :
 	
 	def __getattr__(self, attributeName) :
 		if hasattr(self, 'variables') and hasattr(self, 'axes') :
-			return super(File, self).__getattr__(self, attributeName)
+			return super(File, self).__getattr__(attributeName)
 		raise AttributeError
 
 
@@ -125,6 +125,11 @@ class Variable(aa.Variable) :
 		self.conditions = conditions
 		self.fileName = fileName
 	
+	def __getattr__(self, attributeName) :
+		if hasattr(self, 'axes') :
+			return self.axes[attributeName]
+		raise AttributeError
+
 	def __call__(self, **kwargs) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode
@@ -165,7 +170,10 @@ class Variable(aa.Variable) :
 		if '_data' not in self.__dict__ :
 			newConditions = self.conditions.copy()
 			if 'time' in self.conditions :
-				newConditions['analDate'] = newConditions['time']
+				newConditions['year'] = newConditions['time'].year
+				newConditions['month'] = newConditions['time'].month
+				newConditions['day'] = newConditions['time'].day
+				newConditions['hour'] = newConditions['time'].hour
 				del newConditions['time']
 			mask = []
 			if 'latitude' in self.conditions :
@@ -188,8 +196,12 @@ class Variable(aa.Variable) :
 					mask.append(self.conditions['longitude'])
 			else :
 				mask.append(slice(None))
-			gribIndex = pygrib.index(self.fileName+'.grib')
-			gribLines = gribIndex.select(**newConditions)
+			gribIndex = pygrib.index(self.fileName+'.idx')
+			print newConditions
+			gribLines = gribIndex(**newConditions)
+			#gribLines = gribIndex(hour=12, day=1, year=1979, month=1, shortName='q',
+				#typeOfLevel='isobaricInhPa', level=1000)
+			print gribLines
 			gribIndex.close()
 			shape = ()
 			for axisName, axis in self.axes.iteritems() :

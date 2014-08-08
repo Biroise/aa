@@ -32,6 +32,9 @@ class Variable(object) :
 		self.metadata = metadata
 		if data != None :
 			self._data = data
+	
+	def __getattr__(self, attributeName) :
+		return getattr(self.axes, attributeName)
 
 	def _get_data(self) :
 		return self._data
