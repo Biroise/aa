@@ -2,61 +2,29 @@
 """
 An interface between scipy, pygrib and matplotlib's basemap
 """
-
-from axis import Axis
-from axis import TimeAxis
-from axis import month
-from axis import Parallel
+from axis import *
 
 import numpy as np
 import matplotlib.pyplot as plt
-from collections import OrderedDict
 from mpl_toolkits.basemap import Basemap
 
 
-class DataMedium(object) :
-	def __getattr__(self, attributeName) :
-		if attributeName in self.axes.keys() :
-			return self.axes[attributeName]
-		# dealing with the most common aliases
-		latitudeNames = ['latitude', 'latitudes', 'lat']
-		longitudeNames = ['longitude', 'longitudes', 'lon']
-		levelNames = ['level', 'levels', 'lev']
-		axesNames = [latitudeNames, longitudeNames, levelNames]
-		for axisNames in axesNames :
-			if attributeName in axisNames :
-				for axisName in axisNames :
-					if axisName in self.axes.keys() :
-						return self.axes[axisName]
-		# returns the array of coordinates instead of the axis object
-		if attributeName in ['lats', 'lons', 'levs'] :
-			return getattr(self, attributeName[:-1])[:]
-		if attributeName == 'dts' :
-			return getattr(self, 'time')[:]
-		# if no cases fit
-		raise AttributeError
-
-
-class File(DataMedium) :
+class File(object) :
 	def __init__(self) :
-		self.axes = {}
+		self.axes = Axes()
 		self.variables = {}
 
 	def __getattr__(self, attributeName) :
-		if attributeName in self.variables.keys() :
+		if attributeName in self.variables :
 			return self.variables[attributeName]
-		return super(File, self).__getattr__(attributeName)
+		return self.axes[attributeName]
 	
 	def __getitem__(self, item) :
 		return getattr(self, item)
 
-	def close(self) :
-		self._raw.close()
-		del self
 
-
-class Variable(DataMedium) :
-	def __init__(self, data=None, metadata={}, axes=OrderedDict()) :
+class Variable(object) :
+	def __init__(self, data=None, metadata={}, axes=Axes()) :
 		self.axes = axes
 		self.metadata = metadata
 		if data != None :
@@ -85,6 +53,7 @@ class Variable(DataMedium) :
 		slices = {axisName:slice(None) for axisName in self.axes.keys()}
 		newAxes = self.axes.copy()
 		for axisName, condition in kwargs.iteritems() :
+			axisName = Axes.aliases[axisName]
 			item, newAxis = self.axes[axisName](condition)
 			slices[axisName] = item
 			if newAxis == None :
@@ -92,7 +61,7 @@ class Variable(DataMedium) :
 			else :
 				newAxes[axisName] = newAxis
 		# twisted longitudes...
-		if 'longitude' in kwargs.keys() :
+		if 'longitude' in kwargs :
 			if type(slices['longitude']) == tuple :
 				secondSlices = slices.copy()
 				secondSlices['longitude'] = slices['longitude'][1]
@@ -130,8 +99,8 @@ class Variable(DataMedium) :
 			else :
 				return plt.plot(self.axes.values()[0], self.data)
 		elif len(self.axes) == 2 :
-			if 'latitude' in self.axes.keys() and \
-					'longitude' in self.axes.keys() :
+			if 'latitude' in self.axes and \
+					'longitude' in self.axes :
 				self.basemap.drawcoastlines()
 				x, y = self.basemap(
 					*np.meshgrid(self.longitude.data, self.latitude.data))

@@ -1,8 +1,38 @@
 
 import numpy as np
 import operator as op
+from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
+
+
+class Axes(OrderedDict) :
+	aliases = {'latitude':'latitude', 'latitudes':'latitude',
+		'lat':'latitude', 'longitude':'longitude',
+		'longitudes':'longitude', 'lon':'longitude',
+		'level':'level', 'levels':'level', 'lev':'level',
+		'time':'time'}
+	shortcuts = {'lats':'latitude', 'lons':'longitude',
+		'levs':'level', 'dts':'time'}
+
+	def __setitem__(self, attributeName, value) :
+		if attributeName in Axes.aliases :
+			return super(Axes, self).__setitem__(
+					Axes.aliases[attributeName], value)
+		if attributeName in Axes.shortcuts :
+			return super(Axes, self).__setitem__(
+					Axes.aliases[attributeName], value)
+
+	def __getitem__(self, attributeName) :
+		# dealing with the most common aliases
+		if attributeName in Axes.aliases :
+			return super(Axes, self).__getitem__(
+					Axes.aliases[attributeName])
+		if attributeName in Axes.shortcuts :
+			return super(Axes, self).__getitem__(
+					Axes.aliases[attributeName])[:]
+		# if no cases fit
+		raise AttributeError
 
 
 class Axis(object) :

@@ -1,8 +1,6 @@
 
 import pygrib
 import numpy as np
-import operator as op
-from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 
@@ -21,11 +19,11 @@ class File(aa.File) :
 		###################
 		lats, lons = gribLine.latlons()
 		if lats[0, 0] == lats[0, 1] :
-			self.latitude = aa.Axis(lats[:, 0], 'degrees')
-			self.longitude = aa.Parallel(lons[0, :], 'degrees')
+			self.axes['latitude'] = aa.Axis(lats[:, 0], 'degrees')
+			self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
 		else :
-			self.latitude = aa.Axis(lats[0, :], 'degrees')
-			self.longitude = aa.Parallel(lons[:, 0], 'degrees')
+			self.axes['latitude'] = aa.Axis(lats[0, :], 'degrees')
+			self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
 		self._raw.rewind()
 		#################
 		# VERTICAL AXIS #
@@ -40,21 +38,21 @@ class File(aa.File) :
 					gribLine.hour, gribLine.minute, gribLine.second)\
 					== firstInstant :
 			# is it the first time this type of level is met ?
-			if gribLine.typeOfLevel not in verticalExtensions.keys() :
+			if gribLine.typeOfLevel not in verticalExtensions :
 				verticalExtensions[gribLine.typeOfLevel] = [gribLine.level]
 			# the level type already exists : does this particular level too ?
 			elif gribLine.level not in \
 					verticalExtensions[gribLine.typeOfLevel] :
 				verticalExtensions[gribLine.typeOfLevel].append(gribLine.level)
 			# is it the first time this variable is met ?
-			if gribLine.shortName not in variableLevels.keys() :
+			if gribLine.shortName not in variableLevels :
 				variableLevels[gribLine.shortName] = gribLine.typeOfLevel
 			# move to the next line
 			gribLine = self._raw.readline()
 		# create a vertical axis if the number of levels is credible
 		for levelType, levels in verticalExtensions.iteritems() :
 			if len(levels) > 1 :
-				self.level = aa.Axis(np.array(levels), levelType)
+				self.axes['level'] = aa.Axis(np.array(levels), levelType)
 				verticalExtensions[levelType] = True
 			else :
 				verticalExtensions[levelType] = False
@@ -71,7 +69,7 @@ class File(aa.File) :
 		# go to the end
 		self._raw.seek(0, 2)
 		lastIndex = self._raw.tell()
-		self.time = aa.TimeAxis(
+		self.axes['time'] = aa.TimeAxis(
 				np.array([firstInstant + timeIndex*timeStep
 					for timeIndex in range(lastIndex/linesPerInstant)]),
 				None)
@@ -79,28 +77,21 @@ class File(aa.File) :
 		gribLine = self._raw.message(lastIndex)
 		lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
-		if lastInstant != self.time[-1] or \
+		if lastInstant != self.axes['time'][-1] or \
 				lastIndex % linesPerInstant != 0 :
 			print "Error in time axis"
 		self._raw.rewind()
-		########
-		# AXES #
-		########
-		self.axes['time'] = self.time
-		self.axes['level'] = self.level
-		self.axes['latitude'] = self.latitude
-		self.axes['longitude'] = self.longitude
 		#############
 		# VARIABLES #
 		#############
 		for variableName, levelType in variableLevels.iteritems() :
-			axes = OrderedDict()
-			axes['time'] = self.time
+			axes = aa.Axes()
+			axes['time'] = self.axes['time']
 			# does this variable have a vertical extension ?
 			if verticalExtensions[levelType] :
-				axes['level'] = self.level
-			axes['latitude'] = self.latitude
-			axes['longitude'] = self.longitude
+				axes['level'] = self.axes['level']
+			axes['latitude'] = self.axes['latitude']
+			axes['longitude'] = self.axes['longitude']
 			location = {'shortName' : variableName}
 			self.variables[variableName] = Variable(axes, {}, location, self._raw)
 
@@ -120,6 +111,7 @@ class Variable(aa.Variable) :
 			newConditions = self.conditions.copy()
 			newAxes = self.axes.copy()
 			for axisName, condition in kwargs.iteritems() :
+				axisName = aa.Axes.aliases[axisName]
 				item, newAxis = self.axes[axisName](condition)
 				# horizontal slices tap straight into a numpy array
 				if axisName in ['latitude', 'longitude'] :
@@ -142,17 +134,17 @@ class Variable(aa.Variable) :
 		"Loads variable.data ; a waste of time for most uses"
 		if '_data' not in self.__dict__ :
 			newConditions = self.conditions.copy()
-			if 'time' in self.conditions.keys() :
+			if 'time' in self.conditions :
 				newConditions['analDate'] = newConditions['time']
 				del newConditions['time']
 			mask = []
-			if 'latitude' in self.conditions.keys() :
+			if 'latitude' in self.conditions :
 				del newConditions['latitude']
 				mask.append(self.conditions['latitude'])
 			else :
 				mask.append(slice(None))
 			twistedLongitudes = False
-			if 'longitude' in self.conditions.keys() :
+			if 'longitude' in self.conditions :
 				del newConditions['longitude']
 				# twisted longitudes...
 				if type(self.conditions['longitude']) == tuple :
