@@ -4,7 +4,10 @@ An interface between scipy, pygrib and matplotlib's basemap
 """
 from axis import *
 
+import os
+import __builtin__
 import numpy as np
+import cPickle as pickle
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 
@@ -115,7 +118,14 @@ def open(filePath, mode='r') :
 		from aatk import netcdf
 		return netcdf.File(filePath, mode)
 	if filePath.endswith('grib') :
-		from aatk import grib
-		return grib.File(filePath)
+		fileName = os.path.splitext(filePath)[0]
+		picklePath = fileName + '.p'
+		indexPath = fileName + '.idx'
+		if os.path.isfile(picklePath) and os.path.isfile(indexPath) :
+			malossol = __builtin__.open(picklePath)
+			return pickle.load(malossol)
+		else :
+			from aatk import grib
+			return grib.File(filePath)
 
 

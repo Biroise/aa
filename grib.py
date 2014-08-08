@@ -1,6 +1,7 @@
 
 import pygrib
 import numpy as np
+from os.path import splitext
 from datetime import datetime
 from datetime import timedelta
 
@@ -10,8 +11,9 @@ import aa
 class File(aa.File) :
 	def __init__(self, filePath) :
 		super(File, self).__init__()
-		self._raw = pygrib.open(filePath)
-		gribLine = self._raw.readline()
+		fileName = splitext(filePath)[0]
+		rawFile = pygrib.open(filePath)
+		gribLine = rawFile.readline()
 		firstInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
 		###################
@@ -24,7 +26,7 @@ class File(aa.File) :
 		else :
 			self.axes['latitude'] = aa.Axis(lats[0, :], 'degrees')
 			self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
-		self._raw.rewind()
+		rawFile.rewind()
 		#################
 		# VERTICAL AXIS #
 		#################
@@ -32,7 +34,7 @@ class File(aa.File) :
 		# 2D data is followed by 3D data e.g. jra25
 		variableLevels = {}					# variable and level type
 		verticalExtensions = {} 			# level type and list of levels
-		gribLine = self._raw.readline()
+		gribLine = rawFile.readline()
 		# loop through the variables and levels of the first time step
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
@@ -48,7 +50,7 @@ class File(aa.File) :
 			if gribLine.shortName not in variableLevels :
 				variableLevels[gribLine.shortName] = gribLine.typeOfLevel
 			# move to the next line
-			gribLine = self._raw.readline()
+			gribLine = rawFile.readline()
 		# create a vertical axis if the number of levels is credible
 		for levelType, levels in verticalExtensions.iteritems() :
 			if len(levels) > 1 :
@@ -60,27 +62,27 @@ class File(aa.File) :
 		# TIME AXIS #
 		#############
 		# "seek/tell" index starts with 0 : -1
-		linesPerInstant = self._raw.tell() - 1
+		linesPerInstant = rawFile.tell() - 1
 		# determine the interval between two samples
-		gribLine = self._raw.readline()
+		gribLine = rawFile.readline()
 		secondInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
 		timeStep = secondInstant - firstInstant
 		# go to the end
-		self._raw.seek(0, 2)
-		lastIndex = self._raw.tell()
+		rawFile.seek(0, 2)
+		lastIndex = rawFile.tell()
 		self.axes['time'] = aa.TimeAxis(
 				np.array([firstInstant + timeIndex*timeStep
 					for timeIndex in range(lastIndex/linesPerInstant)]),
 				None)
 		# check consistency
-		gribLine = self._raw.message(lastIndex)
+		gribLine = rawFile.message(lastIndex)
 		lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
 		if lastInstant != self.axes['time'][-1] or \
 				lastIndex % linesPerInstant != 0 :
 			print "Error in time axis"
-		self._raw.rewind()
+		rawFile.rewind()
 		#############
 		# VARIABLES #
 		#############
@@ -92,46 +94,74 @@ class File(aa.File) :
 				axes['level'] = self.axes['level']
 			axes['latitude'] = self.axes['latitude']
 			axes['longitude'] = self.axes['longitude']
-			location = {'shortName' : variableName}
-			self.variables[variableName] = Variable(axes, {}, location, self._raw)
+			location = {'shortName' : variableName,
+					'typeOfLevel' : self.axes['level']}
+			self.variables[variableName] = \
+					Variable(axes, {}, location, fileName)
+		##################
+		# PICKLE & INDEX #
+		##################
+		rawFile.close()
+		pickleFile = open(fileName+'.p', 'w')
+		aa.pickle.dump(self, pickleFile)
+		pickleFile.close()
+		gribIndex = pygrib.index(filePath,
+						'shortName', 'level', 'typeOfLevel',
+						'year', 'month', 'day', 'hour')
+		gribIndex.write(fileName+'.idx')
+		gribIndex.close()
+	
+	def __getattr__(self, attributeName) :
+		if hasattr(self, 'variables') and hasattr(self, 'axes') :
+			return super(File, self).__getattr__(self, attributeName)
+		raise AttributeError
 
 
 class Variable(aa.Variable) :
-	def __init__(self, axes, metadata, conditions, rawFile) :
+	def __init__(self, axes, metadata, conditions, fileName) :
 		super(Variable, self).__init__()
 		self.axes = axes
 		self.metadata = metadata
 		self.conditions = conditions
-		self._raw = rawFile
+		self.fileName = fileName
 	
 	def __call__(self, **kwargs) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode
 		if "_data" not in self.__dict__ :
+			# conditions and axes of the output variable
 			newConditions = self.conditions.copy()
 			newAxes = self.axes.copy()
 			for axisName, condition in kwargs.iteritems() :
+				# standardize the axis name
 				axisName = aa.Axes.aliases[axisName]
+				# given the condition, call axis for a new version
 				item, newAxis = self.axes[axisName](condition)
-				# horizontal slices tap straight into a numpy array
+				# already restrictions on lat/lon in the former conditions ?
 				if axisName in ['latitude', 'longitude'] :
-					if axisName in newConditions :
+					if axisName in self.conditions :
+						# slices of slices not handled
 						raise NotImplementedError
 					else :
 						newConditions[axisName] = item
 				# time and level slices need to be made explicit
 				else :
+					# to what datetimes and pressures
+					# do the conditions correspond ? slice former axis
 					newConditions[axisName] = self.axes[axisName][item]
+				# if item is scalar, there will be no need for length 1 axis
 				if newAxis == None :
 					del newAxes[axisName]
+				# otherwise, load newAxis in the new variable's axes
 				else :
 					newAxes[axisName] = newAxis
-			return Variable(newAxes, self.metadata, newConditions, self._raw)
+			return Variable(newAxes, self.metadata, newConditions, self.fileName)
+		# if _data already exists (as a numpy array), follow standard protocol
 		else :
 			return super(Variable, self).__call__(**kwargs)
 	
 	def _get_data(self) :
-		"Loads variable.data ; a waste of time for most uses"
+		"Loads variable.data ; leave it to the last minute"
 		if '_data' not in self.__dict__ :
 			newConditions = self.conditions.copy()
 			if 'time' in self.conditions :
@@ -158,7 +188,9 @@ class Variable(aa.Variable) :
 					mask.append(self.conditions['longitude'])
 			else :
 				mask.append(slice(None))
-			gribLines = self._raw.select(**newConditions)
+			gribIndex = pygrib.index(self.fileName+'.grib')
+			gribLines = gribIndex.select(**newConditions)
+			gribIndex.close()
 			shape = ()
 			for axisName, axis in self.axes.iteritems() :
 				shape = shape + (len(axis),)
