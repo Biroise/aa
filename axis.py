@@ -67,7 +67,9 @@ class Axis(object) :
 				upperCondition = op.lt
 			# extract the sub-axis related to the newConditions
 			mask = np.logical_and(
-				lowerCondition(self[:] - condition[0], 0),
+				lowerCondition(self[:] - condition[0],
+						# adapt 0 to axis unit : number / timedelta(0)
+						type(self[0] - condition[0])(0)),
 				upperCondition(self[:] - condition[0], 
 					condition[1]-condition[0]))
 			# now extract the sub-axis corresponding to the condition
@@ -121,6 +123,10 @@ class Longitudes(np.ndarray) :
 		return super(Longitudes,
 				(super(Longitudes, self).__sub__(toSubstract) + 180)%360
 			).__sub__(180)
+	def min(self) :
+		return np.float(super(Longitudes, self).min())
+	def max(self) :
+		return np.float(super(Longitudes, self).max())
 
 
 class Parallel(Axis) :

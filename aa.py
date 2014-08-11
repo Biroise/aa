@@ -32,7 +32,7 @@ class Variable(object) :
 		self.metadata = metadata
 		if data != None :
 			self._data = data
-	
+
 	def __getattr__(self, attributeName) :
 		return getattr(self.axes, attributeName)
 
@@ -82,15 +82,15 @@ class Variable(object) :
 	
 	def mean(self, axes) :
 		return NotImplementedError
-
+	
 	def _get_basemap(self) :
 		# assign to self a standard basemap
 		self._basemap = Basemap(
 				projection = 'cyl',
-				llcrnrlon = self.longitude.data.min(),
-				llcrnrlat = self.latitude.data.min(),
-				urcrnrlon = self.longitude.data.max(),
-				urcrnrlat = self.latitude.data.max())
+				llcrnrlon = self.lons.min(),
+				llcrnrlat = self.lats.min(),
+				urcrnrlon = self.lons.max(),
+				urcrnrlat = self.lats.max())
 		return self._basemap
 	def _set_basemap(self, someMap) :
 		# user may set basemap himself
@@ -109,12 +109,36 @@ class Variable(object) :
 					'longitude' in self.axes :
 				self.basemap.drawcoastlines()
 				x, y = self.basemap(
-					*np.meshgrid(self.longitude.data, self.latitude.data))
+					*np.meshgrid(np.array(self.lons), self.lats))
 				return self.basemap.pcolormesh(x, y, self.data)
 		else :
 			print "Variable has too many axes or none"
 
 
+def wrap_operator(operatorName) :
+	def operator(self, operand) :
+		if isinstance(operand, Variable) :
+			operand = operand.data
+		return Variable(
+					getattr(self.data, operatorName)(operand),
+					self.metadata.copy(), self.axes.copy())
+	return operator
+for operatorName in ['__add__', '__sub__'] :
+	setattr(Variable, operatorName, wrap_operator(operatorName))
+
+def wrap_statistic(statisticName) :
+	def operator(self, operand) :
+		if isinstance(operand, Variable) :
+			operand = operand.data
+		return Variable(
+					getattr(self.data, operatorName)(operand),
+					self.metadata.copy(), self.axes.copy())
+	return statistic
+"""
+for operatorName in ['mean', 'sum'] :
+	setattr(Variable, operatorName, wrap_statistic(statisticName))
+	"""
+	
 def open(filePath, mode='r') :
 	"Picks the appropriate File subclass to model a gridded data file"
 	if filePath.endswith('nc') :
