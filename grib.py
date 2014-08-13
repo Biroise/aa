@@ -26,6 +26,8 @@ class File(aa.File) :
 		else :
 			self.axes['latitude'] = aa.Axis(lats[0, :], 'degrees')
 			self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
+		# give the lats to lon to get the proper weights
+		self.axes['longitude'].latitudes = self.axes['latitude'].data
 		rawFile.rewind()
 		#################
 		# VERTICAL AXIS #
@@ -166,6 +168,10 @@ class Variable(aa.Variable) :
 				# otherwise, load newAxis in the new variable's axes
 				else :
 					newAxes[axisName] = newAxis
+				if axisName == 'latitude' and 'longitude' in newAxes :
+					newAxes['longitude'].latitudes = \
+							self.axes['latitude'][newConditions['latitude']]\
+							.reshape((-1,))
 			return Variable(newAxes, self.metadata.copy(),
 						newConditions, self.fileName)
 		# if _data already exists (as a numpy array), follow standard protocol

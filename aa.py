@@ -34,7 +34,7 @@ class Variable(object) :
 			self._data = data
 
 	def __getattr__(self, attributeName) :
-		return getattr(self.axes, attributeName)
+		return self.axes[attributeName]
 
 	def _get_data(self) :
 		return self._data
@@ -56,32 +56,42 @@ class Variable(object) :
 			self.data = value
 	
 	def __call__(self, **kwargs) :
-		slices = {axisName:slice(None) for axisName in self.axes.keys()}
+		# standardize the axisNames
+		for axisName, condition in kwargs.iteritems() :
+			if Axes.aliases[axisName] != axisName :
+				kwargs[Axes.aliases[axisName]] = condition
+				del kwargs[axisName]
+		# prepare to slice the data array
+		slices = Axes()
+		for axisName in self.axes :
+			# default behaviour : leave this dimension intact
+			slices[axisName] = slice(None)
+		# the new variable's axes
 		newAxes = self.axes.copy()
 		for axisName, condition in kwargs.iteritems() :
-			axisName = Axes.aliases[axisName]
 			item, newAxis = self.axes[axisName](condition)
 			slices[axisName] = item
 			if newAxis == None :
 				del newAxes[axisName]
 			else :
 				newAxes[axisName] = newAxis
+		# update longitude weights
+		if 'latitude' in kwargs and 'longitude' in newAxes :
+			newAxes['longitude'].latitudes = \
+					self.axes['latitude'][slices['latitude']].reshape((-1,))
 		# twisted longitudes...
 		if 'longitude' in kwargs :
 			if type(slices['longitude']) == tuple :
 				secondSlices = slices.copy()
 				secondSlices['longitude'] = slices['longitude'][1]
 				slices['longitude'] = slices['longitude'][0]
-			# longitude is assumed to be the last axis
-			return Variable(
-					np.hstack((
-						self.data[slices.values()],
-						self.data[secondSlices.values()])),
-					self.metadata, newAxes)
+				# longitude is assumed to be the last axis
+				return Variable(
+						np.hstack((
+							self.data[slices.values()],
+							self.data[secondSlices.values()])),
+						self.metadata, newAxes)
 		return Variable(self.data[slices.values()], self.metadata, newAxes)
-	
-	def mean(self, axes) :
-		return NotImplementedError
 	
 	def _get_basemap(self) :
 		# assign to self a standard basemap
@@ -100,8 +110,8 @@ class Variable(object) :
 	@property
 	def plot(self) :
 		if len(self.axes) == 1 :
-			if self.axes.keys()[0] == 'levels' :
-				return plt.plot(self.data, self.axes['levels'])
+			if self.axes.keys()[0] == 'level' :
+				return plt.plot(self.data, self.axes['level'])
 			else :
 				return plt.plot(self.axes.values()[0], self.data)
 		elif len(self.axes) == 2 :
@@ -113,7 +123,17 @@ class Variable(object) :
 				return self.basemap.pcolormesh(x, y, self.data)
 		else :
 			print "Variable has too many axes or none"
-
+	
+	"""
+	def integrate(self, axisNames) :
+		# input can either be "zy" or ['lev', 'lat']
+		axisIndices = []
+		for i in range(len(axisNames)) :
+			axisNames[i] = aa.Axes.aliases[axisNames[i]]
+			axisIndices.append(self.axes.keys().index(axisNames[i]))
+		# if 'longitude' in axisNames
+		"""
+			
 
 def wrap_operator(operatorName) :
 	def operator(self, operand) :
@@ -126,19 +146,6 @@ def wrap_operator(operatorName) :
 for operatorName in ['__add__', '__sub__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
-def wrap_statistic(statisticName) :
-	def operator(self, operand) :
-		if isinstance(operand, Variable) :
-			operand = operand.data
-		return Variable(
-					getattr(self.data, operatorName)(operand),
-					self.metadata.copy(), self.axes.copy())
-	return statistic
-"""
-for operatorName in ['mean', 'sum'] :
-	setattr(Variable, operatorName, wrap_statistic(statisticName))
-	"""
-	
 def open(filePath, mode='r') :
 	"Picks the appropriate File subclass to model a gridded data file"
 	if filePath.endswith('nc') :

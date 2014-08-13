@@ -11,7 +11,8 @@ class Axes(OrderedDict) :
 		'lat':'latitude', 'longitude':'longitude',
 		'longitudes':'longitude', 'lon':'longitude',
 		'level':'level', 'levels':'level', 'lev':'level',
-		'time':'time'}
+		'time':'time', 'dt':'time', 't':'time',
+		'x':'longitude', 'y':'latitude', 'z':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
 		'levs':'level', 'dts':'time'}
 
@@ -79,6 +80,20 @@ class Axis(object) :
 			return self.find_index(condition), None
 			# don't add this axis to newAxes
 
+	def copy(self) :
+		newAxes = Axes()
+		for axisName, axis in self.iteritems() :
+			newAxes[axisName] = axis.copy()
+
+	@property
+	def weights(self) :
+		# trapezoidal integration
+		output = np.zeros(self.data.shape)
+		output[1:] += 0.5*np.abs(np.diff(self.data))
+		output[:-1] += 0.5*np.abs(np.diff(self.data))
+		return output
+		
+
 	def make_slice(self, mask, condition) :
 		return (slice(np.argmax(mask),
 				len(mask) - np.argmax(mask[::-1])),
@@ -90,6 +105,9 @@ class Axis(object) :
 			print IndexError
 		return index
 
+@np.vectorize
+def in_seconds(delta) :
+	return delta.seconds
 
 class TimeAxis(Axis) :
 	def __init__(self, data, unitDefinition=None) :
@@ -107,6 +125,14 @@ class TimeAxis(Axis) :
 				[epoch + timedelta(**{units: offset})
 				for offset in self.data])
 
+	@property
+	def weights(self) :
+		# trapezoidal integration
+		output = np.zeros(self.data.shape)
+		output[1:] += 0.5*np.abs(in_seconds(np.diff(self.data)))
+		output[:-1] += 0.5*np.abs(in_seconds(np.diff(self.data)))
+		return output
+		
 
 class Longitudes(np.ndarray) :
 	def __eq__(self, toBeCompared) :
@@ -128,12 +154,16 @@ class Longitudes(np.ndarray) :
 	def max(self) :
 		return np.float(super(Longitudes, self).max())
 
+def angle_sub(a, b) :
+	return (a - b + 180)%360 -180
 
 class Parallel(Axis) :
-	# a parallel being the longitudinal axis
-	def __init__(self, data, units) :
+	# the parallel being the longitudinal axis
+	def __init__(self, data, units, latitudes=[0]) :
 		self.data = data.view(Longitudes)
 		self.units = units
+		# an extra argument to get the weights right
+		self.latitudes = latitudes
 	
 	def make_slice(self, mask, condition) :
 		# selected longitudes are at the beginning and end of the axis
@@ -144,15 +174,32 @@ class Parallel(Axis) :
 			secondSlice = slice(0, np.argmax(~mask)) 
 			secondOffset = -int((self[0] - condition[1])/360)*360
 			return ((firstSlice, secondSlice), 
-				Axis(np.hstack((
+				Parallel(np.hstack((
 						self[firstSlice] + firstOffset, 
 						self[secondSlice] - secondOffset)),
 					self.units))
 		else :
 			return (slice(np.argmax(mask), len(mask) - np.argmax(mask[::-1])),
-				Axis(
+				Parallel(
 					self[mask]-int((self[mask][-1] - condition[0])/360)*360,
 					self.units))
+
+	@property
+	def weights(self) :
+		output = super(Parallel, self).weights
+		if angle_sub(self.data[0], self.data[-1]) \
+				<= np.mean(np.diff(self.data)) :
+			output[0] += 0.5*angle_sub(self[0], self[-1])
+			output[-1] += 0.5*angle_sub(self[0], self[-1])
+		#return 6371000*np.cos(self.latitudes[:, None]*np.pi/180)\
+				#*output[None, :]*np.pi/180
+		# leave the cos(lat) to average
+		return 6371000*output*np.pi/180
+
+
+class Meridian(Axis) :
+	def weights(self) :
+		return super(Meridian, self).weights*np.pi/180
 
 
 def month(year, monthIndex) :
