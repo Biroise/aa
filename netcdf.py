@@ -21,7 +21,7 @@ class File(aa.File) :
 							self._raw.variables[dimensionName].units]
 				if aa.Axes.aliases[dimensionName] == 'time' :
 					self.axes[dimensionName] = aa.TimeAxis(*args)
-				elif aa.Axes.aliases[dimensionName] == 'longitude' :
+				elif aa.Axes.aliases[dimensionName] == 'latitude' :
 					self.axes[dimensionName] = aa.Meridian(*args)
 				elif aa.Axes.aliases[dimensionName] == 'longitude' :
 					self.axes[dimensionName] = aa.Parallel(*args)

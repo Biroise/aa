@@ -105,9 +105,11 @@ class Axis(object) :
 			print IndexError
 		return index
 
+
 @np.vectorize
 def in_seconds(delta) :
 	return delta.seconds
+
 
 class TimeAxis(Axis) :
 	def __init__(self, data, unitDefinition=None) :
@@ -154,8 +156,10 @@ class Longitudes(np.ndarray) :
 	def max(self) :
 		return np.float(super(Longitudes, self).max())
 
+
 def angle_sub(a, b) :
 	return (a - b + 180)%360 -180
+
 
 class Parallel(Axis) :
 	# the parallel being the longitudinal axis
@@ -170,18 +174,18 @@ class Parallel(Axis) :
 		if mask[0] and mask[-1] and not mask.all() :
 			# first slice, the end part
 			firstSlice = slice(-np.argmax(~mask[::-1]), None)
-			firstOffset = -int((self[-1] - condition[0])/360)*360
+			firstOffset = round((condition[0] - self[-1])/360)*360
 			secondSlice = slice(0, np.argmax(~mask)) 
-			secondOffset = -int((self[0] - condition[1])/360)*360
+			secondOffset = round((condition[0] - self[0])/360)*360
 			return ((firstSlice, secondSlice), 
 				Parallel(np.hstack((
 						self[firstSlice] + firstOffset, 
-						self[secondSlice] - secondOffset)),
+						self[secondSlice] + secondOffset)),
 					self.units))
 		else :
 			return (slice(np.argmax(mask), len(mask) - np.argmax(mask[::-1])),
 				Parallel(
-					self[mask]-int((self[mask][-1] - condition[0])/360)*360,
+					self[mask] + round((condition[0]-self[mask][0])/360)*360,
 					self.units))
 
 	@property
