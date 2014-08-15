@@ -24,6 +24,9 @@ class File(object) :
 	
 	def __getitem__(self, item) :
 		return getattr(self, item)
+	
+	def close(self) :
+		pass
 
 
 class Variable(object) :
@@ -55,6 +58,10 @@ class Variable(object) :
 		else :
 			self.data = value
 	
+	@property
+	def shape(self) :
+		return self.data.shape
+
 	def __call__(self, **kwargs) :
 		# standardize the axisNames
 		for axisName, condition in kwargs.iteritems() :
@@ -87,12 +94,15 @@ class Variable(object) :
 				slices['longitude'] = slices['longitude'][0]
 				# longitude is assumed to be the last axis
 				return Variable(
-						np.hstack((
+						np.concatenate((
 							self.data[slices.values()],
-							self.data[secondSlices.values()])),
+							self.data[secondSlices.values()]), axis=-1),
 						self.metadata, newAxes)
 		return Variable(self.data[slices.values()], self.metadata, newAxes)
 	
+	def close(self) :
+		pass
+
 	def _get_basemap(self) :
 		# assign to self a standard basemap
 		self._basemap = Basemap(

@@ -12,7 +12,8 @@ class Axes(OrderedDict) :
 		'longitudes':'longitude', 'lon':'longitude',
 		'level':'level', 'levels':'level', 'lev':'level',
 		'time':'time', 'dt':'time', 't':'time',
-		'x':'longitude', 'y':'latitude', 'z':'level'}
+		'x':'longitude', 'y':'latitude', 'z':'level',
+		'level0':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
 		'levs':'level', 'dts':'time'}
 
@@ -124,7 +125,7 @@ class TimeAxis(Axis) :
 			date = [int(bits) for bits in words[2].split('-')]
 			epoch = datetime(date[0], date[1], date[2])
 			self.data = np.array(
-				[epoch + timedelta(**{units: offset})
+				[epoch + timedelta(**{units: np.asscalar(offset)})
 				for offset in self.data])
 
 	@property

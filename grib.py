@@ -1,6 +1,7 @@
 
 import pygrib
 import numpy as np
+from operator import itemgetter
 from os.path import splitext
 from datetime import datetime
 from datetime import timedelta
@@ -34,30 +35,35 @@ class File(aa.File) :
 		#################
 		# sometimes there are several types of level
 		# 2D data is followed by 3D data e.g. jra25
-		variableLevels = {}					# variable and level type
-		verticalExtensions = {} 			# level type and list of levels
+		variablesLevels = {}					# variable - level type - level
 		gribLine = rawFile.readline()
 		# loop through the variables and levels of the first time step
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
 					== firstInstant :
-			# is it the first time this type of level is met ?
-			if gribLine.typeOfLevel not in verticalExtensions :
-				verticalExtensions[gribLine.typeOfLevel] = [gribLine.level]
-			# the level type already exists : does this particular level too ?
-			elif gribLine.level not in \
-					verticalExtensions[gribLine.typeOfLevel] :
-				verticalExtensions[gribLine.typeOfLevel].append(gribLine.level)
 			# is it the first time this variable is met ?
-			if gribLine.shortName not in variableLevels :
-				variableLevels[gribLine.shortName] = gribLine.typeOfLevel
+			if gribLine.shortName not in variablesLevels :
+				variablesLevels[gribLine.shortName] = {}
+			if gribLine.typeOfLevel not in \
+					variablesLevels[gribLine.shortName] :
+				variablesLevels[gribLine.shortName][gribLine.typeOfLevel] = []
+			variablesLevels[gribLine.shortName][gribLine.typeOfLevel]\
+					.append(gribLine.level)
 			# move to the next line
 			gribLine = rawFile.readline()
-		# create a vertical axis if the number of levels is credible
-		for levelType, levels in verticalExtensions.iteritems() :
-			if len(levels) > 1 :
-				# assumes only one vertical axis exists
-				self.axes['level'] = aa.Axis(np.array(levels), levelType)
+		# find the longest vertical axis
+		maxLevelNumber = 0
+		for variableName, levelKinds in variablesLevels.iteritems() :
+			for levelType, levels in levelKinds.iteritems() :
+				if len(levels) > 1 :
+					variablesLevels[variableName][levelType] \
+							= aa.Axis(np.array(levels), levelType)
+				else :
+					variablesLevels[variableName][levelType] = False
+				if len(levels) > maxLevelNumber :
+					maxLevelNumber = len(levels)
+					mainLevels = aa.Axis(np.array(levels), levelType)
+		self.axes['level'] = mainLevels
 		#############
 		# TIME AXIS #
 		#############
@@ -86,21 +92,31 @@ class File(aa.File) :
 		#############
 		# VARIABLES #
 		#############
-		for variableName, levelType in variableLevels.iteritems() :
-			location = {'shortName' : variableName.encode('ascii'),
-					'typeOfLevel' : levelType.encode('ascii')}
-			axes = aa.Axes()
-			axes['time'] = self.axes['time']
-			# does this variable have a vertical extension ?
-			if len(verticalExtensions[levelType]) > 1 :
-				axes['level'] = self.axes['level']
-			else :
-				# flat level i.e. 2D data
-				location['level'] = verticalExtension[levelType]
-			axes['latitude'] = self.axes['latitude']
-			axes['longitude'] = self.axes['longitude']
-			self.variables[variableName] = \
-					Variable(axes, {}, location, fileName)
+		for variableName, levelKinds in variablesLevels.iteritems() :
+			for levelType, verticalAxis in levelKinds.iteritems() :
+				location = {'shortName' : variableName.encode('ascii'),
+						'typeOfLevel' : levelType.encode('ascii')}
+				axes = aa.Axes()
+				axes['time'] = self.axes['time']
+				variableLabel = variableName + '_' + levelType
+				# does this variable have a vertical extension ?
+				# it may not be the file's vertical axis
+				if verticalAxis :
+					axes['level'] = verticalAxis
+					# in case of homonyms, only the variable with the main 
+					# vertical axis gets to keep the original shortname
+					if verticalAxis.units == mainLevels.units :
+						variableLabel = variableName
+				else :
+					# flat level i.e. 2D data
+					location['level'] = levelType
+				# no ambiguity
+				if len(levelKinds) == 1 :
+					variableLabel = variableName
+				axes['latitude'] = self.axes['latitude']
+				axes['longitude'] = self.axes['longitude']
+				self.variables[variableLabel] = \
+						Variable(axes, {}, location, fileName)
 		##################
 		# PICKLE & INDEX #
 		##################
@@ -118,7 +134,7 @@ class File(aa.File) :
 		if hasattr(self, 'variables') and hasattr(self, 'axes') :
 			return super(File, self).__getattr__(attributeName)
 		raise AttributeError
-
+	
 
 class Variable(aa.Variable) :
 	def __init__(self, axes, metadata, conditions, fileName) :
@@ -188,6 +204,11 @@ class Variable(aa.Variable) :
 			################
 			# TIME & LEVEL #
 			################
+			# scalar conditions only
+			subConditions = self.conditions.copy()
+			################
+			# TIME & LEVEL #
+			################
 			# assumes grib files always have a time dimension
 			if 'time' not in self.conditions :
 				newConditions['time'] = self.axes['time'].data
@@ -234,12 +255,7 @@ class Variable(aa.Variable) :
 				subConditions['day'] = instant.day
 				subConditions['hour'] = instant.hour
 				for level in newConditions['level'] :
-					kind = level.dtype.kind
-					if kind == 'i' :
-						standardType = int
-					elif kind == 'f' :
-						standardType = float
-					subConditions['level'] = standardType(level)
+					subConditions['level'] = np.asscalar(level)
 					gribLines.extend(gribIndex(**subConditions))
 			gribIndex.close()
 			##############
@@ -265,4 +281,3 @@ class Variable(aa.Variable) :
 	def _set_data(self, newValue) :
 		self._data = newValue
 	data = property(_get_data, _set_data)
-

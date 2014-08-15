@@ -38,15 +38,27 @@ class File(aa.File) :
 				- set(self._raw.dimensions.keys()) :
 			variableAxes = aa.Axes()
 			for axisName in self._raw.variables[variableName].dimensions :
-				axisName = aa.Axes.aliases[axisName]
-				if axisName in self.axes :
-					variableAxes[axisName] = self.axes[axisName]
+				if axisName in aa.Axes.aliases :
+					axisName = aa.Axes.aliases[axisName]
+					if axisName in self.axes :
+						variableAxes[axisName] = self.axes[axisName]
+			# there will be absent axes if names are not conventional
 			self.variables[variableName] = \
 					Variable(
 						self._raw.variables[variableName][:], {},
-						variableAxes)
+						variableAxes, self._raw)
+	
+	def close(self) :
+		self._raw.close()
 
 
 class Variable(aa.Variable) :
-	pass
+	def __init__(self, data, metadata, axes, rawFile)	:
+		super(Variable, self).__init__(data, metadata, axes)
+		self._raw = rawFile
+	
+	def close(self) :
+		self._raw.close()
+
+		
 
