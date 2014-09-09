@@ -14,6 +14,7 @@ class File(aa.File) :
 		super(File, self).__init__()
 		fileName = splitext(filePath)[0]
 		rawFile = pygrib.open(filePath)
+		# read the first line of the file
 		gribLine = rawFile.readline()
 		firstInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
@@ -29,24 +30,27 @@ class File(aa.File) :
 			self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
 		# give the lats to lon to get the proper weights
 		self.axes['longitude'].latitudes = self.axes['latitude'].data
-		rawFile.rewind()
 		#################
 		# VERTICAL AXIS #
 		#################
 		# sometimes there are several types of level
 		# 2D data is followed by 3D data e.g. jra25
 		variablesLevels = {}					# variable - level type - level
-		gribLine = rawFile.readline()
 		# loop through the variables and levels of the first time step
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
 					== firstInstant :
 			# is it the first time this variable is met ?
 			if gribLine.shortName not in variablesLevels :
+				# create a dictionary for that variable
+				# that will contain different level types
 				variablesLevels[gribLine.shortName] = {}
+			# is this the first time this type of level is met ?
 			if gribLine.typeOfLevel not in \
 					variablesLevels[gribLine.shortName] :
+					# create a list that will contain the level labels
 				variablesLevels[gribLine.shortName][gribLine.typeOfLevel] = []
+			# append the level label to the variable / level type
 			variablesLevels[gribLine.shortName][gribLine.typeOfLevel]\
 					.append(gribLine.level)
 			# move to the next line
@@ -67,16 +71,21 @@ class File(aa.File) :
 		#############
 		# TIME AXIS #
 		#############
-		# "seek/tell" index starts with 0 : -1
+		# "seek/tell" index starts with 1
+		# but we've moved on the next instant at the end of the while loop
+		# hence the minus one
 		linesPerInstant = rawFile.tell() - 1
 		# determine the interval between two samples
-		gribLine = rawFile.readline()
 		secondInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)
 		timeStep = secondInstant - firstInstant
-		# go to the end
+		# go to the end of the file
 		rawFile.seek(0, 2)
 		lastIndex = rawFile.tell()
+		# this index points at the last message
+		# e.g. f.message(lastIndex) returns the last message
+		# indices start at 1 meaning that lastIndex is also the
+		# number of messages in the file
 		self.axes['time'] = aa.TimeAxis(
 				np.array([firstInstant + timeIndex*timeStep
 					for timeIndex in range(lastIndex/linesPerInstant)]),
