@@ -59,14 +59,15 @@ class File(aa.File) :
 		maxLevelNumber = 0
 		for variableName, levelKinds in variablesLevels.iteritems() :
 			for levelType, levels in levelKinds.iteritems() :
+				# does levels look like a proper axis ?
 				if len(levels) > 1 :
 					variablesLevels[variableName][levelType] \
 							= aa.Axis(np.array(levels), levelType)
-				else :
-					variablesLevels[variableName][levelType] = False
+				# is levels longer than the previous longest axis ?
 				if len(levels) > maxLevelNumber :
 					maxLevelNumber = len(levels)
 					mainLevels = aa.Axis(np.array(levels), levelType)
+		# the longest vertical axis gets to be the file's vertical axis
 		self.axes['level'] = mainLevels
 		#############
 		# TIME AXIS #
@@ -103,14 +104,14 @@ class File(aa.File) :
 		#############
 		for variableName, levelKinds in variablesLevels.iteritems() :
 			for levelType, verticalAxis in levelKinds.iteritems() :
-				location = {'shortName' : variableName.encode('ascii'),
+				conditions = {'shortName' : variableName.encode('ascii'),
 						'typeOfLevel' : levelType.encode('ascii')}
 				axes = aa.Axes()
 				axes['time'] = self.axes['time']
 				variableLabel = variableName + '_' + levelType
 				# does this variable have a vertical extension ?
 				# it may not be the file's vertical axis
-				if verticalAxis :
+				if len(verticalAxis) > 1 :
 					axes['level'] = verticalAxis
 					# in case of homonyms, only the variable with the main 
 					# vertical axis gets to keep the original shortname
@@ -118,14 +119,15 @@ class File(aa.File) :
 						variableLabel = variableName
 				else :
 					# flat level i.e. 2D data
-					location['level'] = levelType
+					# the condition is a list to be iterable
+					conditions['level'] = verticalAxis
 				# no ambiguity
 				if len(levelKinds) == 1 :
 					variableLabel = variableName
 				axes['latitude'] = self.axes['latitude']
 				axes['longitude'] = self.axes['longitude']
 				self.variables[variableLabel] = \
-						Variable(axes, {}, location, fileName)
+						Variable(axes, {}, conditions, fileName)
 		##################
 		# PICKLE & INDEX #
 		##################
@@ -137,13 +139,8 @@ class File(aa.File) :
 						'shortName', 'level', 'typeOfLevel',
 						'year', 'month', 'day', 'hour')
 		gribIndex.write(fileName+'.idx')
-		gribIndex.close()
-	
-	def __getattr__(self, attributeName) :
-		if hasattr(self, 'variables') and hasattr(self, 'axes') :
-			return super(File, self).__getattr__(attributeName)
-		raise AttributeError
-	
+		gribIndex.close()	
+
 
 class Variable(aa.Variable) :
 	def __init__(self, axes, metadata, conditions, fileName) :
@@ -153,11 +150,6 @@ class Variable(aa.Variable) :
 		self.conditions = conditions
 		self.fileName = fileName
 	
-	def __getattr__(self, attributeName) :
-		if hasattr(self, 'axes') :
-			return self.axes[attributeName]
-		raise AttributeError
-
 	def __call__(self, **kwargs) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode
@@ -184,12 +176,13 @@ class Variable(aa.Variable) :
 					# do the conditions correspond ? slice former axis
 					newConditions[axisName] = \
 						self.axes[axisName][item]
-				# if item is scalar, there will be no need for length 1 axis
+					# make sure newConditions is still iterable though
+					if not isinstance(newConditions[axisName], list) :
+						newConditions[axisName] = \
+							[newConditions[axisName]]
+				# if item is scalar, there will be no need for an axis
 				if newAxis == None :
 					del newAxes[axisName]
-					# make sure newConditions is still iterable though
-					newConditions[axisName] = \
-						[newConditions[axisName]]
 				# otherwise, load newAxis in the new variable's axes
 				else :
 					newAxes[axisName] = newAxis
@@ -204,9 +197,8 @@ class Variable(aa.Variable) :
 			return super(Variable, self).__call__(**kwargs)
 	
 	def _get_data(self) :
-		"Loads variable.data ; leave it to the last minute"
-		if not hasattr(self, '_data') :
-			# dummy conditions to play with (possibly superfluous)
+		if '_data' not in self.__dict__ :
+			# dummy conditions to play with
 			newConditions = self.conditions.copy()
 			# scalar conditions only
 			subConditions = self.conditions.copy()
@@ -224,13 +216,15 @@ class Variable(aa.Variable) :
 			else :
 				# won't be needing it : year/month/day/hour instead
 				del subConditions['time']
-			# if data is 2D, it will have level in self.conditions
+			# if data is 2D, it will have already have a level condition
 			# idem if it's 3D and has already been sliced
+			# if not, that means the user wants all available levels
 			if 'level' not in self.conditions :
 				newConditions['level'] = self.axes['level'].data
 			########################
 			# LATITUDE & LONGITUDE #
 			########################
+			# mask is used to slice the netcdf array contained in gribMessages
 			mask = []
 			if 'latitude' in self.conditions :
 				del subConditions['latitude']
@@ -250,43 +244,50 @@ class Variable(aa.Variable) :
 					slice2 = slice(-secondMask[-1].stop, None)
 				else :
 					mask.append(self.conditions['longitude'])
+				horizontalShape.append(self.lons.shape)
 			else :
 				mask.append(slice(None))
+			mask = tuple(mask)
+			# shape of the output array : (time, level, horizontalShape)
+			horizontalShape = []
+			if hasattr(self, 'lats') :
+				horizontalShape.append(len(self.lats))
+			if hasattr(self, 'lons') :
+				horizontalShape.append(len(self.lons))
+			horizontalShape = tuple(horizontalShape)
 			#####################
 			# GET GRIB MESSAGES #
 			#####################
-			# gribLines will store all the results of our select queries
-			gribLines = []
+			shape = ()
+			for axisName, axis in self.axes.iteritems() :
+				shape = shape + (len(axis),)
+			self._data = np.empty(shape, dtype=float)
+			self._data.shape = (-1,) + horizontalShape
 			gribIndex = pygrib.index(self.fileName+'.idx')
+			lineIndex = 0
 			for instant in newConditions['time'] :
 				subConditions['year'] = instant.year
 				subConditions['month'] = instant.month
 				subConditions['day'] = instant.day
 				subConditions['hour'] = instant.hour
 				for level in newConditions['level'] :
-					subConditions['level'] = np.asscalar(level)
-					gribLines.extend(gribIndex(**subConditions))
+					subConditions['level'] = level
+							#np.asscalar(level)
+					# normally, there should be only one line
+					# that answers our query
+					gribLine = gribIndex(**subConditions)[0]
+					if twistedLongitudes :
+						self._data[lineIndex, ..., slice1] = \
+							gribLine.values[mask]
+						self._data[lineIndex, ..., slice2] = \
+							gribLine.values[secondMask]
+					else :
+						self._data[lineIndex] = gribLine.values[mask]
+					lineIndex += 1
 			gribIndex.close()
-			##############
-			# FILL ARRAY #
-			##############
-			shape = ()
-			for axisName, axis in self.axes.iteritems() :
-				shape = shape + (len(axis),)
-			self._data = np.empty(shape, dtype=float)
-			# flatten time and levels
-			self._data.shape = (-1,) + self._data.shape[-2:]
-			if twistedLongitudes :
-				for lineIndex, gribLine in enumerate(gribLines) :	
-					self._data[lineIndex, ..., slice1] = \
-						gribLine.values[mask]
-					self._data[lineIndex, ..., slice2] = \
-						gribLine.values[secondMask]
-			else :
-				for lineIndex, gribLine in enumerate(gribLines) :	
-					self._data[lineIndex] = gribLine.values[mask]
 			self._data.shape = shape
 		return self._data
 	def _set_data(self, newValue) :
 		self._data = newValue
 	data = property(_get_data, _set_data)
+

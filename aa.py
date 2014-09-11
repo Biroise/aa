@@ -18,9 +18,13 @@ class File(object) :
 		self.variables = {}
 
 	def __getattr__(self, attributeName) :
-		if attributeName in self.variables :
-			return self.variables[attributeName]
-		return self.axes[attributeName]
+		if 'variables' in self.__dict__ :
+			if attributeName in self.variables :
+				return self.variables[attributeName]
+		if 'axes' in self.__dict__ :
+			return self.axes[attributeName]
+		raise AttributeError
+
 	
 	def __getitem__(self, item) :
 		return getattr(self, item)
@@ -36,9 +40,6 @@ class Variable(object) :
 		if data != None :
 			self._data = data
 
-	def __getattr__(self, attributeName) :
-		return self.axes[attributeName]
-
 	def _get_data(self) :
 		return self._data
 	def _set_data(self, newValue) :
@@ -46,18 +47,23 @@ class Variable(object) :
 	data = property(_get_data, _set_data)
 
 	def __getitem__(self, item) :
-		# standard case : slicing an array
-		if isinstance(self.data, np.ndarray) :
-			return self.data[item]
-		# in case of scalar variables sliced with ":"
-		else :
-			return self.data
-	def __setitem__(self, item, value) :		
-		if isinstance(self.data, np.ndarray) :
-			self.data[item] = value
-		else :
-			self.data = value
-	
+		conditions = {}
+		# make item iterable, even when it's a singleton
+		if not isinstance(item, tuple) :
+			item = (item,)
+		for axisIndex, axisName in enumerate(self.axes) :
+			if axisIndex < len(item) :
+				if not isinstance(item[axisIndex], slice) :
+					conditions[axisName] = \
+						self.axes[axisName][item[axisIndex]]
+				else :
+					# if it's a ':' slice, do nothing
+					if item[axisIndex] != slice(None) :
+						conditions[axisName] = \
+							(self.axes[axisName][item[axisIndex]].min(),
+							self.axes[axisName][item[axisIndex]].max())
+		return self(**conditions)
+
 	@property
 	def shape(self) :
 		return self.data.shape
@@ -96,7 +102,7 @@ class Variable(object) :
 				return Variable(
 						np.concatenate((
 							self.data[slices.values()],
-							self.data[secondSlices.values()]), axis=-1),
+							self.data[secondSlices.values()])),
 						self.metadata, newAxes)
 		return Variable(self.data[slices.values()], self.metadata, newAxes)
 	
@@ -134,6 +140,11 @@ class Variable(object) :
 		else :
 			print "Variable has too many axes or none"
 	
+	def __getattr__(self, attributeName) :
+		if 'axes' in self.__dict__ :
+			return self.axes[attributeName]
+		raise AttributeError
+
 	"""
 	def integrate(self, axisNames) :
 		# input can either be "zy" or ['lev', 'lat']
