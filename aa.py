@@ -51,12 +51,18 @@ class Variable(object) :
 		# make item iterable, even when it's a singleton
 		if not isinstance(item, tuple) :
 			item = (item,)
+		# loop through axes in their correct order
+		# and match axis with a sub-item
 		for axisIndex, axisName in enumerate(self.axes) :
+			# there mey be more axes than sub-items
+			# do not overshoot
 			if axisIndex < len(item) :
+				# if it's a single index slice
 				if not isinstance(item[axisIndex], slice) :
 					conditions[axisName] = \
 						self.axes[axisName][item[axisIndex]]
 				else :
+					# it's a slice
 					# if it's a ':' slice, do nothing
 					if item[axisIndex] != slice(None) :
 						conditions[axisName] = \
@@ -127,6 +133,9 @@ class Variable(object) :
 	def plot(self) :
 		if len(self.axes) == 1 :
 			if self.axes.keys()[0] == 'level' :
+				# make sure pressures decrease with height
+				if not plt.gca().yaxis_inverted :
+					plt.gca().invert_yaxis()
 				return plt.plot(self.data, self.axes['level'])
 			else :
 				return plt.plot(self.axes.values()[0], self.data)
@@ -147,24 +156,31 @@ class Variable(object) :
 
 	"""
 	def integrate(self, axisNames) :
-		# input can either be "zy" or ['lev', 'lat']
+		# still basic, no weights
+		# input can either either be like "zy" or like ['lev', 'lat']
 		axisIndices = []
 		for i in range(len(axisNames)) :
+			# standardize the axisNames
 			axisNames[i] = aa.Axes.aliases[axisNames[i]]
 			axisIndices.append(self.axes.keys().index(axisNames[i]))
 		# if 'longitude' in axisNames
 		"""
 			
 
+# allow operation on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
+	# a function factory
 	def operator(self, operand) :
+		# the operator expects a Variable or a numpy-compatible input
 		if isinstance(operand, Variable) :
 			operand = operand.data
+		# use the numpy operator on the Variable's data
+		# and return as a new varaible
 		return Variable(
 					getattr(self.data, operatorName)(operand),
 					self.metadata.copy(), self.axes.copy())
 	return operator
-for operatorName in ['__add__', '__sub__'] :
+for operatorName in ['__add__', '__sub__', '__div__', '__mul__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
 def open(filePath, mode='r') :
@@ -172,7 +188,7 @@ def open(filePath, mode='r') :
 	if filePath.endswith('nc') :
 		from aatk import netcdf
 		return netcdf.File(filePath, mode)
-	if filePath.endswith('grib') :
+	if filePath.endswith('grib') or filePath.endswith('grb') :
 		fileName = os.path.splitext(filePath)[0]
 		picklePath = fileName + '.p'
 		indexPath = fileName + '.idx'

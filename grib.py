@@ -200,12 +200,7 @@ class Variable(aa.Variable) :
 		if '_data' not in self.__dict__ :
 			# dummy conditions to play with
 			newConditions = self.conditions.copy()
-			# scalar conditions only
-			subConditions = self.conditions.copy()
-			################
-			# TIME & LEVEL #
-			################
-			# scalar conditions only
+			# scalar conditions only (input for the gribIndex)
 			subConditions = self.conditions.copy()
 			################
 			# TIME & LEVEL #
@@ -214,7 +209,8 @@ class Variable(aa.Variable) :
 			if 'time' not in self.conditions :
 				newConditions['time'] = self.axes['time'].data
 			else :
-				# won't be needing it : year/month/day/hour instead
+				# gribIndex won't want lists of datetimes
+				# but rather individual year/month/day/hour
 				del subConditions['time']
 			# if data is 2D, it will have already have a level condition
 			# idem if it's 3D and has already been sliced
@@ -224,6 +220,7 @@ class Variable(aa.Variable) :
 			########################
 			# LATITUDE & LONGITUDE #
 			########################
+			### MASK ###
 			# mask is used to slice the netcdf array contained in gribMessages
 			mask = []
 			if 'latitude' in self.conditions :
@@ -244,10 +241,10 @@ class Variable(aa.Variable) :
 					slice2 = slice(-secondMask[-1].stop, None)
 				else :
 					mask.append(self.conditions['longitude'])
-				horizontalShape.append(self.lons.shape)
 			else :
 				mask.append(slice(None))
 			mask = tuple(mask)
+			### HORIZONTAL SHAPE ###
 			# shape of the output array : (time, level, horizontalShape)
 			horizontalShape = []
 			if hasattr(self, 'lats') :
@@ -261,8 +258,12 @@ class Variable(aa.Variable) :
 			shape = ()
 			for axisName, axis in self.axes.iteritems() :
 				shape = shape + (len(axis),)
+			# build the output numpy array
 			self._data = np.empty(shape, dtype=float)
+			# flatten time and level dimensions
+			# that's in case there's neither time nor level dimension
 			self._data.shape = (-1,) + horizontalShape
+			# load the grib index
 			gribIndex = pygrib.index(self.fileName+'.idx')
 			lineIndex = 0
 			for instant in newConditions['time'] :

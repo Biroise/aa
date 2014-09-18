@@ -86,15 +86,6 @@ class Axis(object) :
 		for axisName, axis in self.iteritems() :
 			newAxes[axisName] = axis.copy()
 
-	@property
-	def weights(self) :
-		# trapezoidal integration
-		output = np.zeros(self.data.shape)
-		output[1:] += 0.5*np.abs(np.diff(self.data))
-		output[:-1] += 0.5*np.abs(np.diff(self.data))
-		return output
-		
-
 	def make_slice(self, mask, condition) :
 		return (slice(np.argmax(mask),
 				len(mask) - np.argmax(mask[::-1])),
@@ -127,15 +118,6 @@ class TimeAxis(Axis) :
 			self.data = np.array(
 				[epoch + timedelta(**{units: np.asscalar(offset)})
 				for offset in self.data])
-
-	@property
-	def weights(self) :
-		# trapezoidal integration
-		output = np.zeros(self.data.shape)
-		output[1:] += 0.5*np.abs(in_seconds(np.diff(self.data)))
-		output[:-1] += 0.5*np.abs(in_seconds(np.diff(self.data)))
-		return output
-		
 
 class Longitudes(np.ndarray) :
 	def __eq__(self, toBeCompared) :
@@ -189,19 +171,6 @@ class Parallel(Axis) :
 					self[mask] + round((condition[0]-self[mask][0])/360)*360,
 					self.units))
 
-	@property
-	def weights(self) :
-		output = super(Parallel, self).weights
-		if angle_sub(self.data[0], self.data[-1]) \
-				<= np.mean(np.diff(self.data)) :
-			output[0] += 0.5*angle_sub(self[0], self[-1])
-			output[-1] += 0.5*angle_sub(self[0], self[-1])
-		#return 6371000*np.cos(self.latitudes[:, None]*np.pi/180)\
-				#*output[None, :]*np.pi/180
-		# leave the cos(lat) to average
-		return 6371000*output*np.pi/180
-
-
 class Meridian(Axis) :
 	def weights(self) :
 		return super(Meridian, self).weights*np.pi/180
@@ -213,4 +182,14 @@ def month(year, monthIndex) :
 			'co')
 	
 
+"""
+@property
+def weights(self) :
+	# trapezoidal integration
+	output = np.zeros(self.data.shape)
+	output[1:] += 0.5*np.abs(np.diff(self.data))
+	output[:-1] += 0.5*np.abs(np.diff(self.data))
+	return output
+"""
+	
 
