@@ -272,8 +272,10 @@ class Variable(aa.Variable) :
 				subConditions['day'] = instant.day
 				subConditions['hour'] = instant.hour
 				for level in newConditions['level'] :
-					subConditions['level'] = level
-							#np.asscalar(level)
+					subConditions['level'] = \
+						np.asscalar(np.array(level))
+						# converts numpy types to standard types
+						# standard types are converted to numpy
 					# normally, there should be only one line
 					# that answers our query
 					gribLine = gribIndex(**subConditions)[0]

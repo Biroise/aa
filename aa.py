@@ -134,7 +134,7 @@ class Variable(object) :
 		if len(self.axes) == 1 :
 			if self.axes.keys()[0] == 'level' :
 				# make sure pressures decrease with height
-				if not plt.gca().yaxis_inverted :
+				if not plt.gca().yaxis_inverted() :
 					plt.gca().invert_yaxis()
 				return plt.plot(self.data, self.axes['level'])
 			else :
@@ -154,18 +154,38 @@ class Variable(object) :
 			return self.axes[attributeName]
 		raise AttributeError
 
-	"""
-	def integrate(self, axisNames) :
+	def mean(self, axisNames) :
 		# still basic, no weights
 		# input can either either be like "zy" or like ['lev', 'lat']
+		print "/!\\ Careful : no weights, \n\
+				not even to integrate along \n\
+				a vertical or a meridian"
 		axisIndices = []
+		newAxes = self.axes.copy()
 		for i in range(len(axisNames)) :
-			# standardize the axisNames
-			axisNames[i] = aa.Axes.aliases[axisNames[i]]
-			axisIndices.append(self.axes.keys().index(axisNames[i]))
-		# if 'longitude' in axisNames
-		"""
-			
+			axisIndices.append(
+				self.axes.keys().index(
+					Axes.aliases[axisNames[i]]))
+			# remove the axis along which the averaging is to be done
+			del newAxes[Axes.aliases[axisNames[i]]]
+		return Variable(
+					averager(self.data, sorted(axisIndices)),
+					self.metadata.copy(), newAxes)
+		
+def averager(data, axisIndices) :
+	# still axes needing averaging
+	if len(axisIndices) > 0 :
+		# extract the first/next axisIndex
+		nextIndex = axisIndices.pop(0)
+		# reduce the other axisIndices by one to account for the loss
+		# in dimension due to the averaging
+		axisIndices = [axisIndex - 1 for axisIndex in axisIndices]
+		return averager(data.mean(axis=nextIndex), axisIndices)
+	else :
+		return data
+	
+	
+
 
 # allow operation on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
@@ -188,7 +208,8 @@ def open(filePath, mode='r') :
 	if filePath.endswith('nc') :
 		from aatk import netcdf
 		return netcdf.File(filePath, mode)
-	if filePath.endswith('grib') or filePath.endswith('grb') :
+	if filePath.endswith('grib') or filePath.endswith('grb') \
+			or filePath.endswith('grb2') :
 		fileName = os.path.splitext(filePath)[0]
 		picklePath = fileName + '.p'
 		indexPath = fileName + '.idx'
