@@ -143,3 +143,30 @@ class Variable(object) :
 					averager(self.data, sorted(axisIndices)),
 					self.metadata.copy(), newAxes)
 	
+def averager(data, axisIndices) :
+	# still axes needing averaging
+	if len(axisIndices) > 0 :
+		# extract the first/next axisIndex
+		nextIndex = axisIndices.pop(0)
+		# reduce the other axisIndices by one to account for the loss
+		# in dimension due to the averaging
+		axisIndices = [axisIndex - 1 for axisIndex in axisIndices]
+		return averager(data.mean(axis=nextIndex), axisIndices)
+	else :
+		return data
+	
+# allow operation on variables e.g. add, substract, etc.
+def wrap_operator(operatorName) :
+	# a function factory
+	def operator(self, operand) :
+		# the operator expects a Variable or a numpy-compatible input
+		if isinstance(operand, Variable) :
+			operand = operand.data
+		# use the numpy operator on the Variable's data
+		# and return as a new varaible
+		return Variable(
+					getattr(self.data, operatorName)(operand),
+					self.metadata.copy(), self.axes.copy())
+	return operator
+for operatorName in ['__add__', '__sub__', '__div__', '__mul__'] :
+	setattr(Variable, operatorName, wrap_operator(operatorName))
