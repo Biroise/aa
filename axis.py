@@ -96,6 +96,17 @@ class Axis(object) :
 		if index == 0 and self[0] != condition :
 			print IndexError
 		return index
+	
+	def __eq__(self, other) :
+		answer = False
+		if hasattr(other, 'data') and hasattr(other, 'units') :
+			if len(self.data) == len(other.data) and self.units == self.units :
+				if (self.data == other.data).all() :
+					answer = True
+		# if other has no data/units attributes e.g. "self == None ?"
+		# if self WAS of NoneType (or any other type), this method would not be called
+		# hence the answer is always False in this case
+		return answer
 
 
 @np.vectorize
