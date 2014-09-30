@@ -1,6 +1,7 @@
 
 import pygrib
 import numpy as np
+import cPickle as pickle
 from operator import itemgetter
 from os.path import splitext
 from datetime import datetime
@@ -89,8 +90,7 @@ class File(aa.File) :
 		# number of messages in the file
 		self.axes['time'] = aa.TimeAxis(
 				np.array([firstInstant + timeIndex*timeStep
-					for timeIndex in range(lastIndex/linesPerInstant)]),
-				None)
+					for timeIndex in range(lastIndex/linesPerInstant)]), None)
 		# check consistency
 		gribLine = rawFile.message(lastIndex)
 		lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
@@ -133,7 +133,7 @@ class File(aa.File) :
 		##################
 		rawFile.close()
 		pickleFile = open(fileName+'.p', 'w')
-		aa.pickle.dump(self, pickleFile)
+		pickle.dump(self, pickleFile)
 		pickleFile.close()
 		gribIndex = pygrib.index(filePath,
 						'shortName', 'level', 'typeOfLevel',

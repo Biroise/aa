@@ -85,13 +85,32 @@ class Variable(object) :
 		pass
 
 	def _get_basemap(self) :
-		# assign to self a standard basemap
-		self._basemap = Basemap(
-				projection = 'cyl',
-				llcrnrlon = self.lons.min(),
-				llcrnrlat = self.lats.min(),
-				urcrnrlon = self.lons.max(),
-				urcrnrlat = self.lats.max())
+		import matplotlib.pyplot as plt
+		from mpl_toolkits.basemap import Basemap
+		# Are we mapping the North Pole ?
+		if self.lats.max() > 85 and \
+				self.lons.max() - self.lons.min() > 355 :
+			self._basemap = Basemap(
+					projection = 'nplaea',
+					boundinglat = self.lats.min(),
+					lon_0 = 0,
+					round = True)
+		# the South Pole ?
+		elif self.lats.min() < -85 and \
+				self.lons.max() - self.lons.min() > 355 :
+			self._basemap = Basemap(
+					projection = 'nplaea',
+					boundinglat = self.lats.min(),
+					lon_0 = 0,
+					round = True)
+		else :
+			# assign to self a standard basemap
+			self._basemap = Basemap(
+					projection = 'cyl',
+					llcrnrlon = self.lons.min(),
+					llcrnrlat = self.lats.min(),
+					urcrnrlon = self.lons.max(),
+					urcrnrlat = self.lats.max())
 		return self._basemap
 	def _set_basemap(self, someMap) :
 		# user may set basemap himself

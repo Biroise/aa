@@ -17,8 +17,11 @@ class File(aa.File) :
 		########
 		for dimensionName in self._raw.dimensions :
 			if dimensionName in self._raw.variables :
-				args = [self._raw.variables[dimensionName][:],
-							self._raw.variables[dimensionName].units]
+				if hasattr(self._raw.variables[dimensionName], 'units') :
+					units = self._raw.variables[dimensionName].units
+				else :
+					units = None
+				args = [self._raw.variables[dimensionName][:], units]
 				if aa.Axes.aliases[dimensionName] == 'time' :
 					self.axes[dimensionName] = aa.TimeAxis(*args)
 				elif aa.Axes.aliases[dimensionName] == 'latitude' :
