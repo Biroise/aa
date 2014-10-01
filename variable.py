@@ -88,7 +88,7 @@ class Variable(object) :
 		import matplotlib.pyplot as plt
 		from mpl_toolkits.basemap import Basemap
 		# Are we mapping the North Pole ?
-		if self.lats.max() > 85 and \
+		if self.lats.max() > 85 and self.lats.min() > 10 and \
 				self.lons.max() - self.lons.min() > 355 :
 			self._basemap = Basemap(
 					projection = 'nplaea',
@@ -96,7 +96,7 @@ class Variable(object) :
 					lon_0 = 0,
 					round = True)
 		# the South Pole ?
-		elif self.lats.min() < -85 and \
+		elif self.lats.min() < -85 and self.lats.max() < -10 and \
 				self.lons.max() - self.lons.min() > 355 :
 			self._basemap = Basemap(
 					projection = 'nplaea',
@@ -120,7 +120,7 @@ class Variable(object) :
 	@property
 	def plot(self) :
 		import matplotlib.pyplot as plt
-		from mpl_toolkits.basemap import Basemap
+		from mpl_toolkits.basemap import addcyclic
 		if len(self.axes) == 1 :
 			if self.axes.keys()[0] == 'level' :
 				# make sure pressures decrease with height
@@ -133,9 +133,11 @@ class Variable(object) :
 			if 'latitude' in self.axes and \
 					'longitude' in self.axes :
 				self.basemap.drawcoastlines()
+				# need addcyclic if n/splaea
 				x, y = self.basemap(
 					*np.meshgrid(np.array(self.lons), self.lats))
-				return self.basemap.pcolormesh(x, y, self.data)
+				return self.basemap.pcolormesh(x, y, self.data),\
+							plt.colorbar()
 		else :
 			print "Variable has too many axes or none"
 	
@@ -145,32 +147,52 @@ class Variable(object) :
 		raise AttributeError
 
 	def mean(self, axisNames) :
-		# still basic, no weights
 		# input can either either be like "zy" or like ['lev', 'lat']
-		print "/!\\ Careful : no weights, \n\
-				not even to integrate along \n\
-				a vertical or a meridian"
-		axisIndices = []
+		# standardize the axisName and find its position in axes
+		namesAndIndices = []
+		# axes of the output variable
 		newAxes = self.axes.copy()
 		for i in range(len(axisNames)) :
-			axisIndices.append(
-				self.axes.keys().index(
-					Axes.aliases[axisNames[i]]))
+			namesAndIndices.append(
+					(Axes.aliases[axisNames[i]],
+					self.axes.keys().index(
+						Axes.aliases[axisNames[i]]))) 
 			# remove the axis along which the averaging is to be done
 			del newAxes[Axes.aliases[axisNames[i]]]
 		return Variable(
-					averager(self.data, sorted(axisIndices)),
+					averager(
+						self.data,
+						sorted(namesAndIndices, key = lambda axis : axis[1]),
+						self.axes),
 					self.metadata.copy(), newAxes)
 	
-def averager(data, axisIndices) :
+def averager(data, namesAndIndices, oldAxes) :
 	# still axes needing averaging
-	if len(axisIndices) > 0 :
+	if len(namesAndIndices) > 0 :
 		# extract the first/next axisIndex
-		nextIndex = axisIndices.pop(0)
-		# reduce the other axisIndices by one to account for the loss
+		nextName, nextIndex = namesAndIndices.pop(0)
+		# reduce the other indices by one to account for the loss
 		# in dimension due to the averaging
-		axisIndices = [axisIndex - 1 for axisIndex in axisIndices]
-		return averager(data.mean(axis=nextIndex), axisIndices)
+		namesAndIndices = [(name, index - 1)
+				for name, index in namesAndIndices]
+		if nextName in ['level', 'latitude'] :
+			weightSlice = [None]*len(data.shape)
+			weightSlice[nextIndex] = slice(None)
+			if nextName == 'level' :
+				weights = np.zeros(len(oldAxes['level']))
+				weights[:-1] += 0.5*np.abs(np.diff(oldAxes['level'].data))
+				weights[1:] += 0.5*np.abs(np.diff(oldAxes['level'].data))
+			if nextName == 'latitude' :
+				weights = np.cos(oldAxes['latitude'].data*np.pi/180.0)
+			return averager(
+					(data*weights[weightSlice]/weights.sum())
+							.sum(axis=nextIndex),
+					namesAndIndices,
+					oldAxes)
+		else :
+			return averager(
+					data.mean(axis=nextIndex),
+					namesAndIndices, oldAxes)
 	else :
 		return data
 	

@@ -37,6 +37,7 @@ class File(aa.File) :
 		# sometimes there are several types of level
 		# 2D data is followed by 3D data e.g. jra25
 		variablesLevels = {}					# variable - level type - level
+		variablesMetaData = {}
 		# loop through the variables and levels of the first time step
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
@@ -46,6 +47,9 @@ class File(aa.File) :
 				# create a dictionary for that variable
 				# that will contain different level types
 				variablesLevels[gribLine.shortName] = {}
+				variablesMetaData[gribLine.shortName] = {}
+				variablesMetaData[gribLine.shortName]['units'] = gribLine.units
+				variablesMetaData[gribLine.shortName]['name'] = gribLine.name
 			# is this the first time this type of level is met ?
 			if gribLine.typeOfLevel not in \
 					variablesLevels[gribLine.shortName] :
@@ -127,7 +131,9 @@ class File(aa.File) :
 				axes['latitude'] = self.axes['latitude']
 				axes['longitude'] = self.axes['longitude']
 				self.variables[variableLabel] = \
-						Variable(axes, {}, conditions, fileName)
+						Variable(axes, variablesMetaData[variableName],
+								conditions, fileName)
+
 		##################
 		# PICKLE & INDEX #
 		##################
