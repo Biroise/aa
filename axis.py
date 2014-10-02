@@ -13,7 +13,7 @@ class Axes(OrderedDict) :
 		'level':'level', 'levels':'level', 'lev':'level',
 		'time':'time', 'dt':'time', 't':'time',
 		'x':'longitude', 'y':'latitude', 'z':'level',
-		'level0':'level'}
+		'level0':'level', 'PRES':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
 		'levs':'level', 'dts':'time'}
 
@@ -160,8 +160,6 @@ class Parallel(Axis) :
 	def __init__(self, data, units, latitudes=[0]) :
 		self.data = data.view(Longitudes)
 		self.units = units
-		# an extra argument to get the weights right
-		self.latitudes = latitudes
 	
 	def make_slice(self, mask, condition) :
 		# selected longitudes are at the beginning and end of the axis
@@ -181,11 +179,6 @@ class Parallel(Axis) :
 				Parallel(
 					self[mask] + round((condition[0]-self[mask][0])/360)*360,
 					self.units))
-
-class Meridian(Axis) :
-	def weights(self) :
-		return super(Meridian, self).weights*np.pi/180
-
 
 def month(year, monthIndex) :
 	return (datetime(year, monthIndex, 1),

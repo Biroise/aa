@@ -24,16 +24,10 @@ class File(aa.File) :
 				args = [self._raw.variables[dimensionName][:], units]
 				if aa.Axes.aliases[dimensionName] == 'time' :
 					self.axes[dimensionName] = aa.TimeAxis(*args)
-				elif aa.Axes.aliases[dimensionName] == 'latitude' :
-					self.axes[dimensionName] = aa.Meridian(*args)
 				elif aa.Axes.aliases[dimensionName] == 'longitude' :
 					self.axes[dimensionName] = aa.Parallel(*args)
 				else :
 					self.axes[aa.Axes.aliases[dimensionName]] = aa.Axis(*args)
-		# give longitude the appropriate latitude weights
-		if 'longitude' in self._raw.dimensions and \
-				'latitude' in self._raw.dimensions :
-			self.longitude.latitudes = self.lats
 		#############
 		# VARIABLES #
 		#############
@@ -45,7 +39,6 @@ class File(aa.File) :
 					axisName = aa.Axes.aliases[axisName]
 					if axisName in self.axes :
 						variableAxes[axisName] = self.axes[axisName]
-			# there will be absent axes if names are not conventional
 			self.variables[variableName] = \
 					Variable(
 						self._raw.variables[variableName][:], {},
