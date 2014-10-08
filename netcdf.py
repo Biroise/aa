@@ -22,12 +22,16 @@ class File(aa.File) :
 				else :
 					units = None
 				args = [self._raw.variables[dimensionName][:], units]
-				if aa.Axes.aliases[dimensionName] == 'time' :
-					self.axes[dimensionName] = aa.TimeAxis(*args)
-				elif aa.Axes.aliases[dimensionName] == 'longitude' :
-					self.axes[dimensionName] = aa.Parallel(*args)
+				if aa.Axes.standardize(dimensionName) == 'time' :
+					self.axes['time'] = aa.TimeAxis(*args)
+				elif aa.Axes.standardize(dimensionName) == 'longitude' :
+					self.axes['longitude'] = aa.Parallel(*args)
+				elif aa.Axes.standardize(dimensionName) == 'latitude' :
+					self.axes['latitude'] = aa.Meridian(*args)
+				elif aa.Axes.standardize(dimensionName) == 'level' :
+					self.axes['level'] = aa.Vertical(*args)
 				else :
-					self.axes[aa.Axes.aliases[dimensionName]] = aa.Axis(*args)
+					self.axes[aa.Axes.standardize(dimensionName)] = aa.Axis(*args)
 		#############
 		# VARIABLES #
 		#############

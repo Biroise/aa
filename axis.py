@@ -16,14 +16,19 @@ class Axes(OrderedDict) :
 		'level0':'level', 'PRES':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
 		'levs':'level', 'dts':'time'}
+	
+	@staticmethod
+	def standardize(axisName) :
+		if axisName in Axes.aliases :
+			return Axes.aliases[axisName]
+		elif axisName in Axes.shortcuts :
+			return Axes.shortcuts[axisName]
+		else :
+			return axisName
 
-	def __setitem__(self, attributeName, value) :
-		if attributeName in Axes.aliases :
-			return super(Axes, self).__setitem__(
-					Axes.aliases[attributeName], value)
-		if attributeName in Axes.shortcuts :
-			return super(Axes, self).__setitem__(
-					Axes.shortcuts[attributeName], value)
+	def __setitem__(self, axisName, value) :
+		return super(Axes, self).__setitem__(
+				Axes.standardize(axisName), value)
 
 	def __getitem__(self, attributeName) :
 		# dealing with the most common aliases
@@ -35,6 +40,9 @@ class Axes(OrderedDict) :
 					Axes.shortcuts[attributeName])[:]
 		# if no cases fit
 		raise AttributeError
+	
+	def index(self, axisName) :
+		return self.keys().index(Axes.standardize(axisName))
 
 
 class Axis(object) :
@@ -75,11 +83,20 @@ class Axis(object) :
 				upperCondition(self[:] - condition[0], 
 					condition[1]-condition[0]))
 			# now extract the sub-axis corresponding to the condition
+			# this task is given to a function that can be over-ridden
+			# by the subclasses of Axis (e.g. Parallel)
 			return self.make_slice(mask, condition)
 		# extract a single index only
 		else :
-			return self.find_index(condition), None
-			# don't add this axis to newAxes
+			index = np.argmax(self[:] == condition)
+			# if there is no exact match, send the neighbours
+			if index == 0 and self[0] != condition :
+				newCondition = (condition - self.step, \
+							condition + self.step, 'cc')
+				return self(newCondition)
+			else :
+				return index, None
+				# don't add this axis to newAxes
 
 	def copy(self) :
 		newAxes = Axes()
@@ -91,12 +108,6 @@ class Axis(object) :
 				len(mask) - np.argmax(mask[::-1])),
 			Axis(self[mask], self.units))
 
-	def find_index(self, condition) :
-		index = np.argmax(self[:] == condition)
-		if index == 0 and self[0] != condition :
-			print IndexError
-		return index
-	
 	def __eq__(self, other) :
 		answer = False
 		if hasattr(other, 'data') and hasattr(other, 'units') :
@@ -108,10 +119,13 @@ class Axis(object) :
 		# hence the answer is always False in this case
 		return answer
 
-
-@np.vectorize
-def in_seconds(delta) :
-	return delta.seconds
+	@property
+	def step(self) :
+		# extremely basic, won't work for irregular axes such as levels
+		return np.abs(self.data[1]-self.data[0])
+	
+	def weights(self) :
+		return np.ones(1)
 
 
 class TimeAxis(Axis) :
@@ -129,6 +143,7 @@ class TimeAxis(Axis) :
 			self.data = np.array(
 				[epoch + timedelta(**{units: np.asscalar(offset)})
 				for offset in self.data])
+
 
 class Longitudes(np.ndarray) :
 	def __eq__(self, toBeCompared) :
@@ -149,10 +164,6 @@ class Longitudes(np.ndarray) :
 		return np.float(super(Longitudes, self).min())
 	def max(self) :
 		return np.float(super(Longitudes, self).max())
-
-
-def angle_sub(a, b) :
-	return (a - b + 180)%360 -180
 
 
 class Parallel(Axis) :
@@ -180,20 +191,22 @@ class Parallel(Axis) :
 					self[mask] + round((condition[0]-self[mask][0])/360)*360,
 					self.units))
 
+class Meridian(Axis) :
+	pass
+
+class Vertical(Axis) :
+	pass
+
 def month(year, monthIndex) :
 	return (datetime(year, monthIndex, 1),
 			datetime(year + (monthIndex+1)/12, (monthIndex+1)%12, 1),
 			'co')
 	
+def angle_sub(a, b) :
+	return (a - b + 180)%360 -180
 
-"""
-@property
-def weights(self) :
-	# trapezoidal integration
-	output = np.zeros(self.data.shape)
-	output[1:] += 0.5*np.abs(np.diff(self.data))
-	output[:-1] += 0.5*np.abs(np.diff(self.data))
-	return output
-"""
-	
+@np.vectorize
+def in_seconds(delta) :
+	return delta.seconds
+
 

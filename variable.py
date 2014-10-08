@@ -19,11 +19,12 @@ class Variable(object) :
 		conditions = {}
 		# make item iterable, even when it's a singleton
 		if not isinstance(item, tuple) :
-			item = (item,)
+			if not isinstance(item, list) :
+				item = (item,)
 		# loop through axes in their correct order
 		# and match axis with a sub-item
 		for axisIndex, axisName in enumerate(self.axes) :
-			# there mey be more axes than sub-items
+			# there may be more axes than sub-items
 			# do not overshoot
 			if axisIndex < len(item) :
 				# if it's a single index slice
@@ -44,11 +45,32 @@ class Variable(object) :
 		return self.data.shape
 
 	def __call__(self, **kwargs) :
+		# input : {axisName: condition, ...}
 		# standardize the axisNames
 		for axisName, condition in kwargs.iteritems() :
-			if Axes.aliases[axisName] != axisName :
-				kwargs[Axes.aliases[axisName]] = condition
-				del kwargs[axisName]
+			del kwargs[axisName]
+			kwargs[Axes.standardize(axisName)] = condition
+		output = self.extract_data(**kwargs)
+		# do we need to interpolate along an axis ?
+		for axisName, condition in kwargs.iteritems() :
+			# did we ask for a single value for an axis
+			# yet still have this axis in the output variable ?
+			# this means extract_data returned the neighbouring points
+			# because this single value is not on the grid
+			if type(condition) != tuple and axisName in output.axes :
+				firstSlice = [slice(None)]*len(output.shape)
+				secondSlice = [slice(None)]*len(output.shape)
+				firstSlice[output.axes.index(axisName)] = 0
+				secondSlice[output.axes.index(axisName)] = 1
+				# linear interpolation !
+				output = \
+					(output[secondSlice]-output[firstSlice])/\
+							(output.axes[axisName][1] - output.axes[axisName][0])\
+						*(condition - output.axes[axisName][0]) \
+					+ output[firstSlice]
+		return output
+
+	def extract_data(self, **kwargs) :
 		# prepare to slice the data array
 		slices = Axes()
 		for axisName in self.axes :
@@ -56,19 +78,21 @@ class Variable(object) :
 			slices[axisName] = slice(None)
 		# the new variable's axes
 		newAxes = self.axes.copy()
+		# dispatch the conditions to the axes
 		for axisName, condition in kwargs.iteritems() :
 			item, newAxis = self.axes[axisName](condition)
+			# replace the default slice(None) by the item returned by the axis
 			slices[axisName] = item
+			# if it's a single item, not a slice, get rid of the axis
 			if newAxis == None :
 				del newAxes[axisName]
 			else :
 				newAxes[axisName] = newAxis
-		# update longitude weights
-		if 'latitude' in kwargs and 'longitude' in newAxes :
-			newAxes['longitude'].latitudes = \
-					self.axes['latitude'][slices['latitude']].reshape((-1,))
 		# twisted longitudes...
 		if 'longitude' in kwargs :
+			# Parallel objects return a tuple of two slices when they're asked
+			# for longitudes that span across the Greenwich meridian or
+			# the date line : slices from either end of the array
 			if type(slices['longitude']) == tuple :
 				secondSlices = slices.copy()
 				secondSlices['longitude'] = slices['longitude'][1]
@@ -139,12 +163,14 @@ class Variable(object) :
 					data, lons = addcyclic(self.data, np.array(self.lons))
 					x, y = self.basemap(
 						*np.meshgrid(lons, self.lats))
-					return self.basemap.pcolormesh(x, y, data),\
-								plt.colorbar()
-				x, y = self.basemap(
-					*np.meshgrid(np.array(self.lons), self.lats))
-				return self.basemap.pcolormesh(x, y, self.data),\
-							plt.colorbar()
+					graph = self.basemap.pcolormesh(x, y, data)
+				else :
+					x, y = self.basemap(
+						*np.meshgrid(np.array(self.lons), self.lats))
+					graph = self.basemap.pcolormesh(x, y, self.data)
+				colorBar = plt.colorbar()
+				colorBar.set_label(self.units)
+				return graph, colorBar
 		else :
 			print "Variable has too many axes or none"
 	
@@ -164,11 +190,10 @@ class Variable(object) :
 		newAxes = self.axes.copy()
 		for i in range(len(axisNames)) :
 			namesAndIndices.append(
-					(Axes.aliases[axisNames[i]],
-					self.axes.keys().index(
-						Axes.aliases[axisNames[i]]))) 
+					(Axes.standardize(axisNames[i]),
+					self.axes.index(axisNames[i])))
 			# remove the axis along which the averaging is to be done
-			del newAxes[Axes.aliases[axisNames[i]]]
+			del newAxes[Axes.standardize(axisNames[i])]
 		return Variable(
 					averager(
 						self.data,

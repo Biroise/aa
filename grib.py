@@ -24,13 +24,11 @@ class File(aa.File) :
 		###################
 		lats, lons = gribLine.latlons()
 		if lats[0, 0] == lats[0, 1] :
-			self.axes['latitude'] = aa.Axis(lats[:, 0], 'degrees')
+			self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
 			self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
 		else :
-			self.axes['latitude'] = aa.Axis(lats[0, :], 'degrees')
+			self.axes['latitude'] = aa.Meridian(lats[0, :], 'degrees')
 			self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
-		# give the lats to lon to get the proper weights
-		self.axes['longitude'].latitudes = self.axes['latitude'].data
 		#################
 		# VERTICAL AXIS #
 		#################
@@ -67,11 +65,11 @@ class File(aa.File) :
 				# does levels look like a proper axis ?
 				if len(levels) > 1 :
 					variablesLevels[variableName][levelType] \
-							= aa.Axis(np.array(levels), levelType)
+							= aa.Vertical(np.array(levels), levelType)
 				# is levels longer than the previous longest axis ?
 				if len(levels) > maxLevelNumber :
 					maxLevelNumber = len(levels)
-					mainLevels = aa.Axis(np.array(levels), levelType)
+					mainLevels = aa.Vertical(np.array(levels), levelType)
 		# the longest vertical axis gets to be the file's vertical axis
 		self.axes['level'] = mainLevels
 		#############
@@ -156,7 +154,17 @@ class Variable(aa.Variable) :
 		self.conditions = conditions
 		self.fileName = fileName
 	
-	def __call__(self, **kwargs) :
+	@property
+	def shape(self) :
+		if "_data" not in self.__dict__ :
+			dimensions = []
+			for axis in self.axes.values() :
+				dimensions.append(len(axis))
+			return tuple(dimensions)	
+		else :
+			return super(Variable, self).shape()
+	
+	def extract_data(self, **kwargs) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode
 		if "_data" not in self.__dict__ :
@@ -164,8 +172,6 @@ class Variable(aa.Variable) :
 			newConditions = self.conditions.copy()
 			newAxes = self.axes.copy()
 			for axisName, condition in kwargs.iteritems() :
-				# standardize the axis name
-				axisName = aa.Axes.aliases[axisName]
 				# given the condition, call axis for a new version
 				item, newAxis = self.axes[axisName](condition)
 				# lat/lon get a special treatment within grib messages (array)
@@ -200,7 +206,7 @@ class Variable(aa.Variable) :
 						newConditions, self.fileName)
 		# if _data already exists (as a numpy array), follow standard protocol
 		else :
-			return super(Variable, self).__call__(**kwargs)
+			return super(Variable, self).extract_data(**kwargs)
 	
 	def _get_data(self) :
 		if '_data' not in self.__dict__ :
