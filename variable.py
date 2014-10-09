@@ -103,7 +103,8 @@ class Variable(object) :
 							self.data[slices.values()],
 							self.data[secondSlices.values()])),
 						self.metadata, newAxes)
-		return Variable(self.data[slices.values()], self.metadata, newAxes)
+		return Variable(self.data[slices.values()],
+				self.metadata.copy(), newAxes)
 	
 	def close(self) :
 		pass
@@ -172,7 +173,7 @@ class Variable(object) :
 				colorBar.set_label(self.units)
 				return graph, colorBar
 		else :
-			print "Variable has too many axes or none"
+			raise Exception, "Variable has too many axes or none"
 	
 	def __getattr__(self, attributeName) :
 		if 'metadata' in self.__dict__ :
@@ -183,55 +184,42 @@ class Variable(object) :
 		raise AttributeError
 
 	def mean(self, axisNames) :
-		# input can either either be like "zy" or like ['lev', 'lat']
-		# standardize the axisName and find its position in axes
-		namesAndIndices = []
-		# axes of the output variable
-		newAxes = self.axes.copy()
+		# input can either either be like 'zy' or like ['lev', 'lat']
+		# turn the 'zy' into ['z', 'y']
+		axisNames = list(axisNames)
 		for i in range(len(axisNames)) :
-			namesAndIndices.append(
-					(Axes.standardize(axisNames[i]),
-					self.axes.index(axisNames[i])))
-			# remove the axis along which the averaging is to be done
-			del newAxes[Axes.standardize(axisNames[i])]
-		return Variable(
-					averager(
-						self.data,
-						sorted(namesAndIndices, key = lambda axis : axis[1]),
-						self.axes),
-					self.metadata.copy(), newAxes)
+			axisNames[i] = Axes.standardize(axisNames[i])
+			# levels must be averaged first
+			# 'level' must be at the top of the list
+			if axisNames[i] == 'level' :
+				del axisNames[i]
+			axisNames = ['level'] + axisNames
+		return self.averager(axisNames)
 	
-def averager(data, namesAndIndices, oldAxes) :
-	# still axes needing averaging
-	if len(namesAndIndices) > 0 :
-		# extract the first/next axisIndex
-		nextName, nextIndex = namesAndIndices.pop(0)
-		# reduce the other indices by one to account for the loss
-		# in dimension due to the averaging
-		namesAndIndices = [(name, index - 1)
-				for name, index in namesAndIndices]
-		if nextName in ['level', 'latitude'] :
-			weightSlice = [None]*len(data.shape)
-			weightSlice[nextIndex] = slice(None)
-			if nextName == 'level' :
-				weights = np.zeros(len(oldAxes['level']))
-				weights[:-1] += 0.5*np.abs(np.diff(oldAxes['level'].data))
-				weights[1:] += 0.5*np.abs(np.diff(oldAxes['level'].data))
-			if nextName == 'latitude' :
-				weights = np.cos(oldAxes['latitude'].data*np.pi/180.0)
-			return averager(
-					(data*weights[weightSlice]/weights.sum())
-							.sum(axis=nextIndex),
-					namesAndIndices,
-					oldAxes)
+	def averager(self, axisNames) :
+		# still axes needing averaging
+		if len(axisNames) > 0 :
+			# extract the name of the axis to be averaged
+			axisName = axisNames.pop(0)
+			newAxes = self.axes.copy()
+			# get its position and weights
+			axisIndex = newAxes.index(axisName)
+			weightSlice = [None]*len(self.shape)
+			weightSlice[axisIndex] = slice(None)
+			weights = newAxes[axisName].weights()
+			# and delete it
+			del newAxes[axisName]
+			return Variable(
+						(self.data*weights[weightSlice]/weights.mean())\
+								.mean(axis=axisIndex),
+						self.metadata.copy(),
+						newAxes
+					).averager(axisNames)
+		# no axes left to average : return the result
 		else :
-			return averager(
-					data.mean(axis=nextIndex),
-					namesAndIndices, oldAxes)
-	else :
-		return data
+			return self
 	
-# allow operation on variables e.g. add, substract, etc.
+# allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
 	# a function factory
 	def operator(self, operand) :

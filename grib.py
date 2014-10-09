@@ -99,7 +99,7 @@ class File(aa.File) :
 					gribLine.hour, gribLine.minute, gribLine.second)
 		if lastInstant != self.axes['time'][-1] or \
 				lastIndex % linesPerInstant != 0 :
-			print "Error in time axis"
+			raise Exception, "Error in time axis"
 		rawFile.rewind()
 		#############
 		# VARIABLES #
@@ -162,7 +162,7 @@ class Variable(aa.Variable) :
 				dimensions.append(len(axis))
 			return tuple(dimensions)	
 		else :
-			return super(Variable, self).shape()
+			return super(Variable, self).shape
 	
 	def extract_data(self, **kwargs) :
 		"Extract a subset via its axes"
@@ -217,7 +217,7 @@ class Variable(aa.Variable) :
 			################
 			# TIME & LEVEL #
 			################
-			# assumes grib files always have a time dimension
+			# KLUDGE : assumes grib files always have a time dimension
 			if 'time' not in self.conditions :
 				newConditions['time'] = self.axes['time'].data
 			else :

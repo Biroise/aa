@@ -5,6 +5,7 @@ from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 
+earthRadius = 6371000
 
 class Axes(OrderedDict) :
 	aliases = {'latitude':'latitude', 'latitudes':'latitude',
@@ -191,11 +192,31 @@ class Parallel(Axis) :
 					self[mask] + round((condition[0]-self[mask][0])/360)*360,
 					self.units))
 
+
 class Meridian(Axis) :
-	pass
+	def weights(self) :
+		return np.cos(self.data*np.pi/180.0)
+
 
 class Vertical(Axis) :
-	pass
+	def weights(self, surfacePressure = None) :
+		if isinstance(surfacePressure, np.ndarray) :
+			output = np.zeros(self.data.shape + surfacePressure.shape)
+			lieDown = [slice(None)] + [None]*len(surfacePressure.shape)
+			standUp = [None] + [slice(None)]*len(surfacePressure.shape)
+			upShape = (-1,) + surfacePressure.shape
+			levels = np.where(
+					self.data[lieDown] < surfacePressure[standUp],
+					self.data[lieDown], surfacePressure[standUp])
+			output[:-1] += 0.5*np.abs(np.diff(levels, axis=0))
+			output[1:] += 0.5*np.abs(np.diff(levels, axis=0))
+			return output
+		else :
+			output = np.zeros(len(self))
+			output[:-1] += 0.5*np.abs(np.diff(self.data))
+			output[1:] += 0.5*np.abs(np.diff(self.data))
+		return output
+
 
 def month(year, monthIndex) :
 	return (datetime(year, monthIndex, 1),
