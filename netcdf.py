@@ -43,10 +43,14 @@ class File(aa.File) :
 					axisName = aa.Axes.aliases[axisName]
 					if axisName in self.axes :
 						variableAxes[axisName] = self.axes[axisName]
+			variableMetaData = {'shortName':variableName}
+			if 'units' in self._raw.variables[variableName].__dict__ :
+				variableMetaData['units'] = \
+						self._raw.variables[variableName].units
 			self.variables[variableName] = \
 					Variable(
-						self._raw.variables[variableName][:], {},
-						variableAxes, self._raw)
+						self._raw.variables[variableName][:],
+						variableMetaData, variableAxes, self._raw)
 	
 	def close(self) :
 		self._raw.close()

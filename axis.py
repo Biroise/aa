@@ -17,6 +17,8 @@ class Axes(OrderedDict) :
 		'level0':'level', 'PRES':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
 		'levs':'level', 'dts':'time'}
+	ncNorm = {'latitude':'lat', 'longitude':'lon',
+			'level':'lev', 'time':'time'}
 	
 	@staticmethod
 	def standardize(axisName) :
@@ -42,8 +44,21 @@ class Axes(OrderedDict) :
 		# if no cases fit
 		raise AttributeError
 	
+	def copy(self) :
+		newAxes = Axes()
+		for axisName, axis in self.iteritems() :
+			newAxes[axisName] = axis.copy()
+		return newAxes
+
 	def index(self, axisName) :
 		return self.keys().index(Axes.standardize(axisName))
+
+	@property
+	def shape(self) :
+		output = []
+		for axis in self.values() :
+			output.append(len(axis))
+		return tuple(output)
 
 
 class Axis(object) :
@@ -99,11 +114,6 @@ class Axis(object) :
 				return index, None
 				# don't add this axis to newAxes
 
-	def copy(self) :
-		newAxes = Axes()
-		for axisName, axis in self.iteritems() :
-			newAxes[axisName] = axis.copy()
-
 	def make_slice(self, mask, condition) :
 		return (slice(np.argmax(mask),
 				len(mask) - np.argmax(mask[::-1])),
@@ -125,8 +135,12 @@ class Axis(object) :
 		# extremely basic, won't work for irregular axes such as levels
 		return np.abs(self.data[1]-self.data[0])
 	
+	@property
 	def weights(self) :
 		return np.ones(1)
+	
+	def copy(self) :
+		return self.__class__(self.data.copy(), self.units)
 
 
 class TimeAxis(Axis) :
@@ -144,6 +158,7 @@ class TimeAxis(Axis) :
 			self.data = np.array(
 				[epoch + timedelta(**{units: np.asscalar(offset)})
 				for offset in self.data])
+			self.units = None
 
 
 class Longitudes(np.ndarray) :
@@ -194,27 +209,18 @@ class Parallel(Axis) :
 
 
 class Meridian(Axis) :
+	@property
 	def weights(self) :
 		return np.cos(self.data*np.pi/180.0)
 
 
 class Vertical(Axis) :
-	def weights(self, surfacePressure = None) :
-		if isinstance(surfacePressure, np.ndarray) :
-			output = np.zeros(self.data.shape + surfacePressure.shape)
-			lieDown = [slice(None)] + [None]*len(surfacePressure.shape)
-			standUp = [None] + [slice(None)]*len(surfacePressure.shape)
-			upShape = (-1,) + surfacePressure.shape
-			levels = np.where(
-					self.data[lieDown] < surfacePressure[standUp],
-					self.data[lieDown], surfacePressure[standUp])
-			output[:-1] += 0.5*np.abs(np.diff(levels, axis=0))
-			output[1:] += 0.5*np.abs(np.diff(levels, axis=0))
-			return output
-		else :
-			output = np.zeros(len(self))
-			output[:-1] += 0.5*np.abs(np.diff(self.data))
-			output[1:] += 0.5*np.abs(np.diff(self.data))
+	@property
+	def weights(self) :
+		output = np.zeros(len(self))
+		output[:-1] += 0.5*np.abs(np.diff(self.data))
+		output[1:] += 0.5*np.abs(np.diff(self.data))
+		output *= 100/9.81
 		return output
 
 

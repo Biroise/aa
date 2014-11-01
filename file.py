@@ -3,9 +3,15 @@ import numpy as np
 from axis import Axes
 
 class File(object) :
-	def __init__(self) :
-		self.axes = Axes()
-		self.variables = {}
+	def __init__(self, axes=None, variables=None) :
+		if axes == None :
+			self.axes = Axes()
+		else :
+			self.axes = axes
+		if variables == None :
+			self.variables = {}
+		else :
+			self.variables = variables
 
 	def __getattr__(self, attributeName) :
 		if 'variables' in self.__dict__ :
@@ -27,7 +33,7 @@ class File(object) :
 		# to the file is the user's responsability
 		with Dataset(filePath, 'w') as output :
 			for axisName, axis in self.axes.iteritems() :
-				output.createDimension(axisName, len(axis))
+				output.createDimension(Axes.ncNorm[axisName], len(axis))
 				if axisName == 'time' :
 					output.createVariable('time', int, ('time',))
 					output.variables['time'].units = 'seconds since 1970-1-1'
@@ -37,17 +43,24 @@ class File(object) :
 						(instant-epoch).total_seconds()
 						for instant in axis.data]
 				else :
+					axisName = Axes.ncNorm[axisName]
 					output.createVariable(
-							axisName, 
+							axisName,
 							type(np.asscalar(axis.data.ravel()[0])),
 							(axisName,))
 					output.variables[axisName][:] = axis.data
 					# TODO metadata...
 			for variableName, variable in self.variables.iteritems() :
+				if variableName == '~' :
+					variableName = 'unknown'
 				output.createVariable(
 						variableName,
 						type(np.asscalar(variable.data.ravel()[0])),
-						tuple(variable.axes.keys()))
+						tuple(
+							[Axes.ncNorm[axisName] for axisName in 
+							variable.axes.keys()]))
+				if 'units' in variable.metadata :
+					output.variables[variableName].units = variable.units
 				output.variables[variableName][:] = variable.data
 				# TODO metadata...
 

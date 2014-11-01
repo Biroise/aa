@@ -46,6 +46,7 @@ class File(aa.File) :
 				# that will contain different level types
 				variablesLevels[gribLine.shortName] = {}
 				variablesMetaData[gribLine.shortName] = {}
+				variablesMetaData[gribLine.shortName]['shortName'] = gribLine.shortName
 				variablesMetaData[gribLine.shortName]['units'] = gribLine.units
 				variablesMetaData[gribLine.shortName]['name'] = gribLine.name
 			# is this the first time this type of level is met ?
@@ -150,6 +151,7 @@ class Variable(aa.Variable) :
 	def __init__(self, axes, metadata, conditions, fileName) :
 		super(Variable, self).__init__()
 		self.axes = axes
+		self.full_axes = axes.copy()
 		self.metadata = metadata
 		self.conditions = conditions
 		self.fileName = fileName
@@ -172,26 +174,25 @@ class Variable(aa.Variable) :
 			newConditions = self.conditions.copy()
 			newAxes = self.axes.copy()
 			for axisName, condition in kwargs.iteritems() :
-				# given the condition, call axis for a new version
-				item, newAxis = self.axes[axisName](condition)
 				# lat/lon get a special treatment within grib messages (array)
 				if axisName in ['latitude', 'longitude'] :
-					# already restrictions on lat/lon in the former conditions ?
-					if axisName in self.conditions :
-						# slices of slices not handled
-						raise NotImplementedError
-					else :
-						newConditions[axisName] = item
+					# there may already be restrictions on lat/lon from former calls
+					# refer to the complete axes to define the new slice
+					item, newAxis = self.full_axes[axisName](condition)
+					newConditions[axisName] = item
 				# time and level slices need to be made explicit
 				else :
+					# given the condition, call axis for a new version
+					item, newAxis = self.axes[axisName](condition)
 					# to what datetimes and pressures
 					# do the conditions correspond ? slice former axis
 					newConditions[axisName] = \
 						self.axes[axisName][item]
 					# make sure newConditions is still iterable though
 					if not isinstance(newConditions[axisName], list) :
-						newConditions[axisName] = \
-							[newConditions[axisName]]
+						if not isinstance(newConditions[axisName], np.ndarray) :
+							newConditions[axisName] = \
+								[newConditions[axisName]]
 				# if item is scalar, there will be no need for an axis
 				if newAxis == None :
 					del newAxes[axisName]

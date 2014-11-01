@@ -49,6 +49,8 @@ class Variable(object) :
 		# standardize the axisNames
 		for axisName, condition in kwargs.iteritems() :
 			del kwargs[axisName]
+			if type(condition) == tuple :
+				condition = tuple(sorted(condition))
 			kwargs[Axes.standardize(axisName)] = condition
 		output = self.extract_data(**kwargs)
 		# do we need to interpolate along an axis ?
@@ -97,17 +99,32 @@ class Variable(object) :
 				secondSlices = slices.copy()
 				secondSlices['longitude'] = slices['longitude'][1]
 				slices['longitude'] = slices['longitude'][0]
+				longitudeIndex = self.axes.index('longitude')
 				# longitude is assumed to be the last axis
 				return Variable(
 						np.concatenate((
-							self.data[slices.values()],
-							self.data[secondSlices.values()])),
+							self.data[tuple(slices.values())],
+							self.data[tuple(secondSlices.values())]),
+							axis=longitudeIndex),
 						self.metadata, newAxes)
-		return Variable(self.data[slices.values()],
+		return Variable(
+				self.data[tuple(slices.values())],
 				self.metadata.copy(), newAxes)
+	
+	def copy(self) :
+		return Variable(self.data.copy(),
+			self.metadata.copy(), self.axes.copy())
 	
 	def close(self) :
 		pass
+
+	def write(self, filePath) :
+		from file import File
+		if 'shortName' not in self.metadata :
+			self.shortName = 'unknown'
+		fileOut = File(axes=self.axes, variables={self.shortName:self})
+		fileOut.write(filePath)
+
 
 	def _get_basemap(self) :
 		if '_basemap' not in self.__dict__ :
@@ -125,8 +142,8 @@ class Variable(object) :
 			elif self.lats.min() < -85 and self.lats.max() < -10 and \
 					self.lons.max() - self.lons.min() > 355 :
 				self._basemap = Basemap(
-						projection = 'nplaea',
-						boundinglat = self.lats.min(),
+						projection = 'splaea',
+						boundinglat = self.lats.max(),
 						lon_0 = 0,
 						round = True)
 			else :
@@ -170,10 +187,27 @@ class Variable(object) :
 						*np.meshgrid(np.array(self.lons), self.lats))
 					graph = self.basemap.pcolormesh(x, y, self.data)
 				colorBar = plt.colorbar()
-				colorBar.set_label(self.units)
+				if 'units' in self.__dict__ :
+					colorBar.set_label(self.units)
 				return graph, colorBar
 		else :
 			raise Exception, "Variable has too many axes or none"
+	
+	def quiver(zonal, meridional, nx=15, ny=15) :
+		import matplotlib.pyplot as plt
+		zonal = zonal(lon=(-179, 180))
+		meridional = meridional(lon=(-179, 180))
+		zonal.basemap.drawcoastlines()
+		order = slice(None)
+		if zonal.lats[0] > zonal.lats[1] :
+			order = slice(None, None, -1)
+		u, v, x, y = zonal.basemap.transform_vector(
+				zonal.data[order], meridional.data[order], zonal.lons,
+				zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
+		graph = zonal.basemap.quiver(x, y, u, v)
+		#plt.quiverkey(graph, 0...
+		
+		
 	
 	def __getattr__(self, attributeName) :
 		if 'metadata' in self.__dict__ :
@@ -183,9 +217,11 @@ class Variable(object) :
 			return self.axes[attributeName]
 		raise AttributeError
 
-	def mean(self, axisNames) :
+	def mean(self, axisNames, surfacePressure=None) :
 		# input can either either be like 'zy' or like ['lev', 'lat']
 		# turn the 'zy' into ['z', 'y']
+		if not isinstance(surfacePressure, type(None)) :
+			self.metadata['surfacePressure'] = np.array(surfacePressure)
 		axisNames = list(axisNames)
 		for i in range(len(axisNames)) :
 			axisNames[i] = Axes.standardize(axisNames[i])
@@ -193,7 +229,7 @@ class Variable(object) :
 			# 'level' must be at the top of the list
 			if axisNames[i] == 'level' :
 				del axisNames[i]
-			axisNames = ['level'] + axisNames
+				axisNames = ['level'] + axisNames
 		return self.averager(axisNames)
 	
 	def averager(self, axisNames) :
@@ -204,21 +240,72 @@ class Variable(object) :
 			newAxes = self.axes.copy()
 			# get its position and weights
 			axisIndex = newAxes.index(axisName)
-			weightSlice = [None]*len(self.shape)
-			weightSlice[axisIndex] = slice(None)
-			weights = newAxes[axisName].weights()
+			weights = newAxes[axisName].weights
 			# and delete it
 			del newAxes[axisName]
-			return Variable(
-						(self.data*weights[weightSlice]/weights.mean())\
-								.mean(axis=axisIndex),
-						self.metadata.copy(),
-						newAxes
-					).averager(axisNames)
+			if axisName == 'level' and 'thickness' in self.metadata :
+				newMetaData = self.metadata.copy()
+				del newMetaData['thickness']
+				return Variable(
+							(self.data*self.thickness.data).sum(axis=axisIndex)/9.81,
+							newMetaData, newAxes
+						).averager(axisNames)
+			elif axisName == 'level' and 'surfacePressure' in self.metadata :
+				# default is vertical integration, not average, ye be warned
+				# won't work if there's still a time dimension
+				levels = np.empty(self.shape)
+				weights = np.zeros(self.shape)
+				standUp = [slice(None)]*len(self.shape)
+				lieDown = [None]*len(self.shape)
+				axisIndex = self.axes.index('level')
+				standUp[axisIndex] = None
+				lieDown[axisIndex] = slice(None)
+				levels = np.where(
+						self.levs[tuple(lieDown)]
+								< self.surfacePressure[tuple(standUp)],
+						self.levs[tuple(lieDown)],
+						self.surfacePressure[tuple(standUp)])\
+				# in case all prescribed levels are inferior
+				# to the surfacePressure
+				standUp[axisIndex] = np.argmax(self.levs)
+				levels[tuple(standUp)] = self.surfacePressure
+				standUp[axisIndex] = slice(0, -1, None)
+				weights[tuple(standUp)] += 0.5*np.abs(np.diff(levels,
+							axis=axisIndex))
+				standUp[axisIndex] = slice(1, None, None)
+				weights[tuple(standUp)] += 0.5*np.abs(np.diff(levels,
+							axis=axisIndex))
+				newMetaData = self.metadata.copy()
+				del newMetaData['surfacePressure']
+				return Variable(
+							(self.data*weights*100/9.8)\
+									.sum(axis=axisIndex),
+							newMetaData,
+							newAxes
+						).averager(axisNames)
+			elif axisName == 'level' :
+				weightSlice = [None]*len(self.shape)
+				weightSlice[axisIndex] = slice(None)
+				return Variable(
+							(self.data*weights[weightSlice])\
+								.sum(axis=axisIndex),
+							self.metadata.copy(),
+							newAxes
+						).averager(axisNames)
+			else :
+				weightSlice = [None]*len(self.shape)
+				weightSlice[axisIndex] = slice(None)
+				return Variable(
+							(self.data*weights[weightSlice]/weights.mean())\
+									.mean(axis=axisIndex),
+							self.metadata.copy(),
+							newAxes
+						).averager(axisNames)
 		# no axes left to average : return the result
 		else :
 			return self
 	
+
 # allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
 	# a function factory
@@ -232,5 +319,6 @@ def wrap_operator(operatorName) :
 					getattr(self.data, operatorName)(operand),
 					self.metadata.copy(), self.axes.copy())
 	return operator
-for operatorName in ['__add__', '__sub__', '__div__', '__mul__'] :
+for operatorName in ['__add__', '__sub__', '__div__', '__mul__', '__pow__',
+			'__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
