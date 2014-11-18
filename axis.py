@@ -140,7 +140,10 @@ class Axis(object) :
 		return np.ones(1)
 	
 	def copy(self) :
-		return self.__class__(self.data.copy(), self.units)
+		if isinstance(self.data, list) :
+			return self.__class__(self.data[:], self.units)
+		else :
+			return self.__class__(self.data.copy(), self.units)
 
 
 class TimeAxis(Axis) :

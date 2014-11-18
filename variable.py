@@ -1,6 +1,9 @@
 
 import numpy as np
 from axis import Axes
+from collections import OrderedDict
+from matplotlib.colors import Normalize
+
 
 class Variable(object) :
 	def __init__(self, data=None, metadata={}, axes=Axes()) :
@@ -74,7 +77,7 @@ class Variable(object) :
 
 	def extract_data(self, **kwargs) :
 		# prepare to slice the data array
-		slices = Axes()
+		slices = OrderedDict()
 		for axisName in self.axes :
 			# default behaviour : leave this dimension intact
 			slices[axisName] = slice(None)
@@ -88,6 +91,7 @@ class Variable(object) :
 			# if it's a single item, not a slice, get rid of the axis
 			if newAxis == None :
 				del newAxes[axisName]
+				self.metadata[axisName] = condition
 			else :
 				newAxes[axisName] = newAxis
 		# twisted longitudes...
@@ -160,19 +164,66 @@ class Variable(object) :
 		self._basemap = someMap
 	basemap = property(_get_basemap, _set_basemap)
 
-	@property
-	def plot(self) :
+	def plot(self, **kwargs) :
 		import matplotlib.pyplot as plt
 		from mpl_toolkits.basemap import addcyclic
 		if len(self.axes) == 1 :
-			if self.axes.keys()[0] == 'level' :
+			if 'level' in self.axes :
 				# make sure pressures decrease with height
 				if not plt.gca().yaxis_inverted() :
 					plt.gca().invert_yaxis()
 				return plt.plot(self.data, self.axes['level'])
 			else :
-				return plt.plot(self.axes.values()[0], self.data)
+				#####################
+				# LONGITUDE PROFILE #
+				#####################
+				if 'longitude' in self.axes :
+					if len(plt.gcf()._axstack._elements) == 0 :
+						import matplotlib.gridspec as gridspec
+						from mpl_toolkits.basemap import Basemap
+						plotGrid = gridspec.GridSpec(2, 1, hspace=0, height_ratios=[6,1])
+						mapSubPlot = plt.subplot(plotGrid[1])
+						if 'latitude' in self.metadata :
+							if isinstance(self.metadata['latitude'], tuple) :
+								lats = self.metadata['latitude']
+							else :
+								lats = tuple([self.metadata['latitude']]*2)
+						else :
+							lats = (50, 50)
+						background = Basemap(
+							projection = 'cyl',
+							llcrnrlon = self.lons[0],
+							llcrnrlat = min(lats[0] - 10, 90),
+							urcrnrlon = self.lons[-1],
+							urcrnrlat = max(lats[1] + 10, -90))
+						background.drawcoastlines()
+						background.drawparallels(lats, color='red')
+						p = plt.Polygon(
+									[(0, lats[0]),
+									(0, lats[1]),
+									(360, lats[1]),
+									(360, lats[0])],
+	    						facecolor='red', alpha=0.5)
+						plt.gca().add_patch(p)
+						background.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
+						plt.gca().set_aspect('auto')
+						mainPlot = plt.subplot(plotGrid[0])
+					#plt.xlabel(r'longitude ($^{\circ}$)')	
+					plt.xlim(self.lons[0], self.lons[-1])
+					plt.setp(plt.gca().get_xticklabels(), visible=False)
+					plt.setp(plt.gca().get_xticklines(), visible=False)
+				elif 'latitude' in self.axes :
+					plt.xlabel(r'latitude ($^{\circ}$)')	
+				if 'label' in kwargs :
+					#plt.legend()
+					return plt.plot(self.axes.values()[0], self.data,
+							label = kwargs['label'])
+				else :
+					return plt.plot(self.axes.values()[0], self.data)
 		elif len(self.axes) == 2 :
+			##########
+			# 2D MAP #
+			##########
 			if 'latitude' in self.axes and \
 					'longitude' in self.axes :
 				self.basemap.drawcoastlines()
@@ -181,12 +232,97 @@ class Variable(object) :
 					data, lons = addcyclic(self.data, np.array(self.lons))
 					x, y = self.basemap(
 						*np.meshgrid(lons, self.lats))
-					graph = self.basemap.pcolormesh(x, y, data)
 				else :
 					x, y = self.basemap(
 						*np.meshgrid(np.array(self.lons), self.lats))
+					data = self.data
+				if self.data.min() < 0 :
+					cs = plt.contour(x, y, data, [0])
+					plt.clabel(cs, fontsize=6, fmt='%1.0f')
+					graph = self.basemap.pcolormesh(x, y, data, cmap=plt.cm.seismic, norm=ccb())
+					#cmax = max(abs(self.data.min()), abs(self.data.max()))
+					#plt.clim(-cmax, cmax)
+				else :
 					graph = self.basemap.pcolormesh(x, y, self.data)
 				colorBar = plt.colorbar()
+				if 'units' in self.__dict__ :
+					colorBar.set_label(self.units)
+				if colorBar.vmin < 0 :
+					colorBar.cmap = plt.cm.seismic
+					cmax = max(abs(colorBar.vmin), abs(colorBar.vmax))
+					plt.clim(-cmax, cmax)
+				return graph, colorBar
+			#####################
+			# HOVMOLLER DIAGRAM #
+			#  LON-LEV PROFILE  #
+			#####################
+			if 'longitude' in self.axes and \
+					('time' in self.axes or 'level' in self.axes) :
+				import matplotlib.gridspec as gridspec
+				from mpl_toolkits.basemap import Basemap
+				plotGrid = gridspec.GridSpec(2, 2, hspace=0, width_ratios=[20,1], height_ratios=[6,1])
+				mapSubPlot = plt.subplot(plotGrid[1, 0])
+				if 'latitude' in self.metadata :
+					if isinstance(self.metadata['latitude'], tuple) :
+						lats = self.metadata['latitude']
+					else :
+						lats = tuple([self.metadata['latitude']]*2)
+				else :
+					lats = (50, 50)
+				background = Basemap(
+					projection = 'cyl',
+					llcrnrlon = self.lons[0],
+					llcrnrlat = min(lats[0] - 10, 90),
+					urcrnrlon = self.lons[-1],
+					urcrnrlat = max(lats[1] + 10, -90))
+				background.drawcoastlines()
+				background.drawparallels(lats, color='red')
+				p = plt.Polygon(
+							[(self.lons[0], lats[0]),
+							(self.lons[0], lats[1]),
+							(self.lons[-1], lats[1]),
+							(self.lons[-1], lats[0])],
+						facecolor='red', alpha=0.5)
+				plt.gca().add_patch(p)
+				background.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
+				plt.gca().set_aspect('auto')
+				mainPlot = plt.subplot(plotGrid[0, 0])
+				if 'level' in self.axes and \
+						self.levs[0] < self.levs[1] :
+					origin = 'upper'
+					print 'coucou', origin
+				else :
+					origin = 'lower'
+				if self.data.min() < 0 :
+					cs = plt.contour(self.data, [0])
+					plt.clabel(cs, fontsize=6, fmt='%1.0f')
+					#import pdb ; pdb.set_trace()
+					plt.draw()
+					graph = plt.imshow(self.data, norm=ccb(),
+							origin=origin, cmap=plt.cm.seismic)
+					#cmax = max(abs(self.data.min()), abs(self.data.max()))
+					#plt.clim(-cmax, cmax)
+				else :
+					graph = plt.imshow(self.data, origin=origin)
+				plt.gca().set_aspect('auto')
+				plt.xlim(0, len(self.lon))
+				if 'time' in self.axes :
+					yaxis = self.dts
+				elif 'level' in self.axes :
+					yaxis = self.levs
+					#plt.gca().invert_yaxis()
+				plt.ylim(0, len(yaxis)-1)
+				# required to set the tick labels
+				plt.draw()
+				ylabels = [item.get_text() for item in mainPlot.get_yticklabels()]
+				# last label is an empty string
+				for i in range(len(ylabels)-1) :
+					ylabels[i] = yaxis[int(ylabels[i])]
+				plt.gca().set_yticklabels(ylabels)
+				plt.setp(plt.gca().get_xticklabels(), visible=False)
+				plt.setp(plt.gca().get_xticklines(), visible=False)
+				cbarPlot = plt.subplot(plotGrid[0, 1])
+				colorBar = plt.colorbar(graph, cax=cbarPlot)
 				if 'units' in self.__dict__ :
 					colorBar.set_label(self.units)
 				return graph, colorBar
@@ -207,8 +343,6 @@ class Variable(object) :
 		graph = zonal.basemap.quiver(x, y, u, v)
 		#plt.quiverkey(graph, 0...
 		
-		
-	
 	def __getattr__(self, attributeName) :
 		if 'metadata' in self.__dict__ :
 			if attributeName in self.metadata :
@@ -241,6 +375,8 @@ class Variable(object) :
 			# get its position and weights
 			axisIndex = newAxes.index(axisName)
 			weights = newAxes[axisName].weights
+			self.metadata[axisName] = (newAxes[axisName].data.min(),
+					newAxes[axisName].data.max())
 			# and delete it
 			del newAxes[axisName]
 			if axisName == 'level' and 'thickness' in self.metadata :
@@ -305,6 +441,17 @@ class Variable(object) :
 		else :
 			return self
 	
+class ccb(Normalize):
+	def __init__(self, vmin=None, vmax=None, midpoint=0, clip=False):
+		self.midpoint = midpoint
+		Normalize.__init__(self, vmin, vmax, clip)
+	
+	def __call__(self, value, clip=None):
+		import numpy.ma as ma
+		# I'm ignoring masked values and all kinds of edge cases to make a
+		# simple example...
+		x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+		return ma.masked_array(np.interp(value, x, y))
 
 # allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :

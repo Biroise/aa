@@ -196,6 +196,7 @@ class Variable(aa.Variable) :
 				# if item is scalar, there will be no need for an axis
 				if newAxis == None :
 					del newAxes[axisName]
+					self.metadata[axisName] = condition
 				# otherwise, load newAxis in the new variable's axes
 				else :
 					newAxes[axisName] = newAxis
