@@ -116,6 +116,7 @@ class Variable(object) :
 				self.metadata.copy(), newAxes)
 	
 	def copy(self) :
+
 		return Variable(self.data.copy(),
 			self.metadata.copy(), self.axes.copy())
 	
@@ -172,7 +173,14 @@ class Variable(object) :
 				# make sure pressures decrease with height
 				if not plt.gca().yaxis_inverted() :
 					plt.gca().invert_yaxis()
-				return plt.plot(self.data, self.axes['level'])
+				if 'label' in kwargs :
+					#plt.legend()
+					return plt.plot(self.data, self.axes['level'],
+							label = kwargs['label'])
+				else :
+					return plt.plot(self.data, self.axes['level'])
+			if 'time' in self.axes :
+				return plt.plot(self.dts, self.data)
 			else :
 				#####################
 				# LONGITUDE PROFILE #
