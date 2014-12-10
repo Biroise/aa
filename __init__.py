@@ -65,7 +65,12 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 	# CLIMATOLOGY #
 	###############
 	if year == None and month == None :
-		return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
+		if region == 'Aa' and \
+				dataset in ['merra', 'era', 'cfsr'] and \
+				variable in ['qu', 'qv', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
+			return open('/media/POMNITIE/climatology/Aa/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
+		else :
+			return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
 
 	#################
 	# MONTHLY MEANS #
@@ -77,14 +82,6 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 	# FULL DATASET #
 	################
 	if month == 'all' :
-		"""
-		if year == 'all' :
-			return open([load(variable, dataset, year, 'all', fileOnly=True)
-					for year in range(1979, 2014)])
-		else :
-			return open([load(variable, dataset, year, month, fileOnly=True)
-					for month in range(1, 13)])
-					"""
 		return open([load(variable, dataset, year, month, fileOnly=True)
 				for month in range(1, 13)])
 
@@ -114,7 +111,7 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 				raise Exception
 		if region == 'Ar' :
 			return output(lat=(60, 90))
-		if region == 'sp' :
+		if region == 'Aa' :
 			return output(lat=(-90, -60))
 		else :
 			return output
@@ -126,7 +123,7 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck'] :
 			output = open('/media/SOUVIENSTOI/ncar/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)[:, :8]
-		if variable in ['e', 'p', 'sp', 'pwat'] :
+		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
 			output = open('/media/SOUVIENSTOI/ncar/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if region == 'Ar' :
@@ -143,7 +140,7 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck'] :
 			output = open('/media/SOUVIENSTOI/doe/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
-		if variable in ['e', 'p', 'sp', 'pwat'] :
+		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
 			output = open('/media/SOUVIENSTOI/doe/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'e' :
@@ -163,26 +160,25 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 	#########
 	if dataset == 'merra' :
 		# 2D variables first
-		if variable in ['pwat', 'qu', 'qv'] :
+		if variable in ['pwat', 'qu', 'qv', 'e', 'p'] :
 			output = open('/media/REMEMBER/merra/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		# 3D variables now
 		if region == 'Ar' :
-			if variable in ['q', 'u', 'v', 'p', 'e', 'sp', 'thck'] :
+			if variable in ['q', 'u', 'v', 'sp', 'thck'] :
 				return open('/media/REMEMBER/merra/Ar/'+variable+'/'
 						+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 			else :
 				return output(lat=(60, 90))
 		elif region == 'Aa' :
 			if variable in ['q', 'u', 'v', 'sp', 'thck'] :
-				return open('/media/REMEMBER/merra/Ar/'+variable+'/'
+				return open('/media/REMEMBER/merra/Aa/'+variable+'/'
 						+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 			else :
 				return output(lat=(-90, -60))
 		else :
-			if variable in ['q', 'u', 'v', 'p', 'e', 'thck'] :
-				return open('/media/REMEMBER/merra/Ar/'+variable+'/'
-						+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
+			if variable in ['q', 'u', 'v', 'thck'] :
+				return load(variable, 'merra', year, month, 'Ar')
 			else :
 				return output
 
@@ -195,8 +191,8 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 				variable = 't'
 			output = open('/home/adufour/jra25/3D/'
 					+str(year)+str(month).zfill(2)+'.grb', fileOnly=fileOnly)[variable][:, :12]
-		if variable == 'sp' :
-			output = open('/home/adufour/jra25/2D/sp/'
+		if variable in ['sp', 'qu', 'qv'] :
+			output = open('/home/adufour/jra25/2D/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'thck' :
 			output = open('/media/REMEMBER/jra25/thck/'

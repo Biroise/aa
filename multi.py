@@ -17,7 +17,7 @@ class File(aa.File) :
 		self.axes['time'] = aa.TimeAxis(np.concatenate(
 				[file.dts for file in self.files]))
 		for variableName, variable in self.files[0].variables.iteritems() :
-			newAxes = variable.axes
+			newAxes = variable.axes.copy()
 			newAxes['time'] = self.axes['time'].copy()
 			self.variables[variableName] = Variable(
 				axes = newAxes,
@@ -55,8 +55,10 @@ class Variable(aa.Variable) :
 			newConditions = self.conditions.copy()
 			newAxes = self.axes.copy()
 			for axisName, condition in kwargs.iteritems() :
+				"""
 				if axisName == 'time' :
 					raise NotImplementedError, "Can't select times yet"
+				"""
 				# update axes but don't store item (a slice)
 				item, newAxis = self.full_axes[axisName](condition)
 				newConditions[axisName] = condition
@@ -75,9 +77,13 @@ class Variable(aa.Variable) :
 	
 	def _get_data(self) :
 		if '_data' not in self.__dict__ :
-			self._data = np.concatenate(
-					[subVariable(**self.conditions).data
-					for subVariable in self.subVariables])
+			tribute = []
+			for subVariable in self.subVariables :
+				try :
+					tribute.append(subVariable(**self.conditions).data)
+				except IndexError :
+					pass
+			self._data = np.concatenate(tribute)
 		return self._data
 	def _set_data(self, newValue) :
 		self._data = newValue

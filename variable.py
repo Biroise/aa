@@ -53,7 +53,7 @@ class Variable(object) :
 		for axisName, condition in kwargs.iteritems() :
 			del kwargs[axisName]
 			if type(condition) == tuple :
-				condition = tuple(sorted(condition))
+				condition = tuple(sorted(condition[:2]))+condition[2:]
 			kwargs[Axes.standardize(axisName)] = condition
 		output = self.extract_data(**kwargs)
 		# do we need to interpolate along an axis ?
@@ -165,7 +165,7 @@ class Variable(object) :
 		self._basemap = someMap
 	basemap = property(_get_basemap, _set_basemap)
 
-	def plot(self, **kwargs) :
+	def plot(self, kind='pcolormesh', **kwargs) :
 		import matplotlib.pyplot as plt
 		from mpl_toolkits.basemap import addcyclic
 		if len(self.axes) == 1 :
@@ -235,7 +235,7 @@ class Variable(object) :
 			if 'latitude' in self.axes and \
 					'longitude' in self.axes :
 				self.basemap.drawcoastlines()
-				# need addcyclic if n/splaea
+				# need addcyclic if n/s-plaea
 				if self.basemap.projection in ['nplaea', 'splaea'] :
 					data, lons = addcyclic(self.data, np.array(self.lons))
 					x, y = self.basemap(
@@ -244,21 +244,18 @@ class Variable(object) :
 					x, y = self.basemap(
 						*np.meshgrid(np.array(self.lons), self.lats))
 					data = self.data
-				if self.data.min() < 0 :
+				if self.data.min() < 0 and False :
 					cs = plt.contour(x, y, data, [0])
 					plt.clabel(cs, fontsize=6, fmt='%1.0f')
-					graph = self.basemap.pcolormesh(x, y, data, cmap=plt.cm.seismic, norm=ccb())
+					graph = getattr(self.basemap, kind)(x, y, data, 
+							cmap=plt.cm.seismic, norm=ccb(), **kwargs)
 					#cmax = max(abs(self.data.min()), abs(self.data.max()))
 					#plt.clim(-cmax, cmax)
 				else :
-					graph = self.basemap.pcolormesh(x, y, self.data)
+					graph = getattr(self.basemap, kind)(x, y, data, **kwargs)
 				colorBar = plt.colorbar()
 				if 'units' in self.__dict__ :
 					colorBar.set_label(self.units)
-				if colorBar.vmin < 0 :
-					colorBar.cmap = plt.cm.seismic
-					cmax = max(abs(colorBar.vmin), abs(colorBar.vmax))
-					plt.clim(-cmax, cmax)
 				return graph, colorBar
 			#####################
 			# HOVMOLLER DIAGRAM #
@@ -301,7 +298,7 @@ class Variable(object) :
 					print 'coucou', origin
 				else :
 					origin = 'lower'
-				if self.data.min() < 0 :
+				if self.data.min() < 0 and False :
 					cs = plt.contour(self.data, [0])
 					plt.clabel(cs, fontsize=6, fmt='%1.0f')
 					#import pdb ; pdb.set_trace()
@@ -337,10 +334,10 @@ class Variable(object) :
 		else :
 			raise Exception, "Variable has too many axes or none"
 	
-	def quiver(zonal, meridional, nx=15, ny=15) :
+	def quiver(zonal, meridional, nx=15, ny=15, **kwargs) :
 		import matplotlib.pyplot as plt
-		zonal = zonal(lon=(-179, 180))
-		meridional = meridional(lon=(-179, 180))
+		zonal = zonal(lon=(-179, 179))
+		meridional = meridional(lon=(-179, 179))
 		zonal.basemap.drawcoastlines()
 		order = slice(None)
 		if zonal.lats[0] > zonal.lats[1] :
@@ -348,7 +345,7 @@ class Variable(object) :
 		u, v, x, y = zonal.basemap.transform_vector(
 				zonal.data[order], meridional.data[order], zonal.lons,
 				zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
-		graph = zonal.basemap.quiver(x, y, u, v)
+		graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
 		#plt.quiverkey(graph, 0...
 		
 	def __getattr__(self, attributeName) :
@@ -359,11 +356,9 @@ class Variable(object) :
 			return self.axes[attributeName]
 		raise AttributeError
 
-	def mean(self, axisNames, surfacePressure=None) :
+	def mean(self, axisNames) :
 		# input can either either be like 'zy' or like ['lev', 'lat']
 		# turn the 'zy' into ['z', 'y']
-		if not isinstance(surfacePressure, type(None)) :
-			self.metadata['surfacePressure'] = np.array(surfacePressure)
 		axisNames = list(axisNames)
 		for i in range(len(axisNames)) :
 			axisNames[i] = Axes.standardize(axisNames[i])
@@ -387,45 +382,46 @@ class Variable(object) :
 					newAxes[axisName].data.max())
 			# and delete it
 			del newAxes[axisName]
+			if axisName == 'level' and 'surfacePressure' in self.metadata :
+				thickness = self.copy()*0
+				sp = self.surfacePressure
+				levels = self.levs
+				if 'time' in self.axes :
+					standUp = [slice(None)] + [None] + [slice(None)]*(len(sp.shape)-1)
+					lieDown = [None] + [slice(None)] + [None]*(len(sp.shape)-1)
+					lieBack = [None] + [slice(None, None, -1)] + [None]*(len(sp.shape)-1)
+					shiftZ = [slice(None), slice(1, None, None)]
+					antiShiftZ = [slice(None), slice(None, -1, None)]
+					zAxis = 1
+				else : 
+					standUp = [None] + [slice(None)]*len(sp.shape)
+					lieDown = [slice(None)] + [None]*len(sp.shape)
+					lieBack = [slice(None, None, -1)] + [None]*len(sp.shape)
+					shiftZ = [slice(1, None, None)]
+					antiShiftZ = [slice(None, -1, None)]
+					zAxis = 0
+				if levels[0] < levels[1] :
+					lowerIndex = len(levels) - 1 - np.argmax(levels[lieBack]*100
+							< sp.data[standUp], axis=zAxis)
+					LEVELs = np.where(
+							np.arange(len(levels))[lieDown] >= lowerIndex[standUp],
+							sp.data[standUp],
+							levels[lieDown]*100)
+				else :
+					lowerIndex = np.argmax(levels[lieDown]*100 < sp.data[standUp], axis=zAxis)
+					LEVELs = np.where(
+							np.arange(len(levels))[lieDown] <= lowerIndex[standUp],
+							sp.data[standUp],
+							levels[lieDown]*100)
+				thickness.data[shiftZ] += 0.5*np.abs(np.diff(LEVELs, axis=zAxis))
+				thickness.data[antiShiftZ] += 0.5*np.abs(np.diff(LEVELs, axis=zAxis))
+				self.metadata['thickness'] = thickness
 			if axisName == 'level' and 'thickness' in self.metadata :
 				newMetaData = self.metadata.copy()
 				del newMetaData['thickness']
 				return Variable(
 							(self.data*self.thickness.data).sum(axis=axisIndex)/9.81,
 							newMetaData, newAxes
-						).averager(axisNames)
-			elif axisName == 'level' and 'surfacePressure' in self.metadata :
-				# default is vertical integration, not average, ye be warned
-				# won't work if there's still a time dimension
-				levels = np.empty(self.shape)
-				weights = np.zeros(self.shape)
-				standUp = [slice(None)]*len(self.shape)
-				lieDown = [None]*len(self.shape)
-				axisIndex = self.axes.index('level')
-				standUp[axisIndex] = None
-				lieDown[axisIndex] = slice(None)
-				levels = np.where(
-						self.levs[tuple(lieDown)]
-								< self.surfacePressure[tuple(standUp)],
-						self.levs[tuple(lieDown)],
-						self.surfacePressure[tuple(standUp)])\
-				# in case all prescribed levels are inferior
-				# to the surfacePressure
-				standUp[axisIndex] = np.argmax(self.levs)
-				levels[tuple(standUp)] = self.surfacePressure
-				standUp[axisIndex] = slice(0, -1, None)
-				weights[tuple(standUp)] += 0.5*np.abs(np.diff(levels,
-							axis=axisIndex))
-				standUp[axisIndex] = slice(1, None, None)
-				weights[tuple(standUp)] += 0.5*np.abs(np.diff(levels,
-							axis=axisIndex))
-				newMetaData = self.metadata.copy()
-				del newMetaData['surfacePressure']
-				return Variable(
-							(self.data*weights*100/9.8)\
-									.sum(axis=axisIndex),
-							newMetaData,
-							newAxes
 						).averager(axisNames)
 			elif axisName == 'level' :
 				weightSlice = [None]*len(self.shape)

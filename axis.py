@@ -133,7 +133,7 @@ class Axis(object) :
 	@property
 	def step(self) :
 		# extremely basic, won't work for irregular axes such as levels
-		return np.abs(self.data[1]-self.data[0])
+		return max(np.abs(np.diff(self.data)))
 	
 	@property
 	def weights(self) :

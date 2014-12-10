@@ -148,10 +148,14 @@ class File(aa.File) :
 
 
 class Variable(aa.Variable) :
-	def __init__(self, axes, metadata, conditions, fileName) :
+	def __init__(self, axes, metadata, conditions,
+			fileName, full_axes = None) :
 		super(Variable, self).__init__()
 		self.axes = axes
-		self.full_axes = axes.copy()
+		if full_axes == None :
+			self.full_axes = axes.copy()
+		else :
+			self.full_axes = full_axes
 		self.metadata = metadata
 		self.conditions = conditions
 		self.fileName = fileName
@@ -200,12 +204,8 @@ class Variable(aa.Variable) :
 				# otherwise, load newAxis in the new variable's axes
 				else :
 					newAxes[axisName] = newAxis
-				if axisName == 'latitude' and 'longitude' in newAxes :
-					newAxes['longitude'].latitudes = \
-							self.axes['latitude'][newConditions['latitude']]\
-							.reshape((-1,))
 			return Variable(newAxes, self.metadata.copy(),
-						newConditions, self.fileName)
+						newConditions, self.fileName, self.full_axes.copy())
 		# if _data already exists (as a numpy array), follow standard protocol
 		else :
 			return super(Variable, self).extract_data(**kwargs)
