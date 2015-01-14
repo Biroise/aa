@@ -133,7 +133,20 @@ class Axis(object) :
 	@property
 	def step(self) :
 		# extremely basic, won't work for irregular axes such as levels
-		return max(np.abs(np.diff(self.data)))
+		a = np.abs(np.diff(self.data))
+		assert (a.min() - a.max())/a[0] < 0.05
+		return a[0]
+	
+	@property
+	def edges(self) :
+		if self.data[0] < self.data[1] :
+			return np.concatenate(
+					(self.data - self.step/2,
+					[self.data[-1] + self.step/2]))
+		else :
+			return np.concatenate(
+					(self.data + self.step/2,
+					[self.data[-1] - self.step/2]))
 	
 	@property
 	def weights(self) :
@@ -209,12 +222,35 @@ class Parallel(Axis) :
 				Parallel(
 					self[mask] + round((condition[0]-self[mask][0])/360)*360,
 					self.units))
+	
+	@property
+	def edges(self) :
+		data = np.array(list(self.data))
+		if data[0] < data[1] :
+			return np.concatenate(
+					(data - self.step/2,
+					[data[-1] + self.step/2]))
+		else :
+			return np.concatenate(
+					(data + self.step/2,
+					[data[-1] - self.step/2]))
+		
 
 
 class Meridian(Axis) :
 	@property
 	def weights(self) :
 		return np.cos(self.data*np.pi/180.0)
+	
+	@property
+	def edges(self) :
+		default = super(Meridian, self).edges
+		for endIndex in [0, -1] :
+			if default[endIndex] > 90 :
+				default[endIndex] = 90
+			if default[endIndex] < -90 :
+				default[endIndex] = -90
+		return default
 
 
 class Vertical(Axis) :

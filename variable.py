@@ -3,13 +3,14 @@ import numpy as np
 import graphics
 from axis import Axes
 from collections import OrderedDict
+import statistics
 
 
 class Variable(object) :
 	def __init__(self, data=None, metadata={}, axes=Axes()) :
 		self.axes = axes
 		self.metadata = metadata
-		if data != None :
+		if type(data) != type(None) :
 			self._data = data
 
 	def _get_data(self) :
@@ -165,39 +166,7 @@ class Variable(object) :
 			# and delete it
 			del newAxes[axisName]
 			if axisName == 'level' and 'surfacePressure' in self.metadata :
-				thickness = self.copy()*0
-				sp = self.surfacePressure
-				levels = self.levs
-				if 'time' in self.axes :
-					standUp = [slice(None)] + [None] + [slice(None)]*(len(sp.shape)-1)
-					lieDown = [None] + [slice(None)] + [None]*(len(sp.shape)-1)
-					lieBack = [None] + [slice(None, None, -1)] + [None]*(len(sp.shape)-1)
-					shiftZ = [slice(None), slice(1, None, None)]
-					antiShiftZ = [slice(None), slice(None, -1, None)]
-					zAxis = 1
-				else : 
-					standUp = [None] + [slice(None)]*len(sp.shape)
-					lieDown = [slice(None)] + [None]*len(sp.shape)
-					lieBack = [slice(None, None, -1)] + [None]*len(sp.shape)
-					shiftZ = [slice(1, None, None)]
-					antiShiftZ = [slice(None, -1, None)]
-					zAxis = 0
-				if levels[0] < levels[1] :
-					lowerIndex = len(levels) - 1 - np.argmax(levels[lieBack]*100
-							< sp.data[standUp], axis=zAxis)
-					LEVELs = np.where(
-							np.arange(len(levels))[lieDown] >= lowerIndex[standUp],
-							sp.data[standUp],
-							levels[lieDown]*100)
-				else :
-					lowerIndex = np.argmax(levels[lieDown]*100 < sp.data[standUp], axis=zAxis)
-					LEVELs = np.where(
-							np.arange(len(levels))[lieDown] <= lowerIndex[standUp],
-							sp.data[standUp],
-							levels[lieDown]*100)
-				thickness.data[shiftZ] += 0.5*np.abs(np.diff(LEVELs, axis=zAxis))
-				thickness.data[antiShiftZ] += 0.5*np.abs(np.diff(LEVELs, axis=zAxis))
-				self.metadata['thickness'] = thickness
+				self.metadata['thickness'] = statistics.sp2thck(self)
 			if axisName == 'level' and 'thickness' in self.metadata :
 				newMetaData = self.metadata.copy()
 				del newMetaData['thickness']
@@ -210,7 +179,7 @@ class Variable(object) :
 				weightSlice[axisIndex] = slice(None)
 				return Variable(
 							(self.data*weights[weightSlice])\
-								.sum(axis=axisIndex),
+								.sum(axis=axisIndex)/9.81,
 							self.metadata.copy(),
 							newAxes
 						).averager(axisNames)
@@ -226,15 +195,16 @@ class Variable(object) :
 		# no axes left to average : return the result
 		else :
 			return self
-
+	
 	basemap = property(graphics._get_basemap, graphics._set_basemap)
 	minimap = property(graphics._get_minimap, graphics._set_minimap)
 	plot = property(graphics.plot)
-	x = property(graphics.x)
-	y = property(graphics.y)
-	z = property(graphics.z)
+	cycle = property(statistics.cycle)
+	trend = property(statistics.trend)
+	slope = property(statistics.slope)
+	significance = property(statistics.significance)
+	line = property(statistics.line)
 	
-
 # allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
 	# a function factory
@@ -248,9 +218,21 @@ def wrap_operator(operatorName) :
 					getattr(self.data, operatorName)(operand),
 					self.metadata.copy(), self.axes.copy())
 	return operator
-for operatorName in ['__add__', '__sub__', '__div__', '__mul__', '__pow__',
+for operatorName in [
+			'__gt__', '__lt__', '__ge__', '__le__', '__eq__', '__ne__',
+			'__add__', '__sub__', '__div__', '__mul__', '__pow__',
 			'__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
+def absolute(self) :
+	return Variable(abs(self.data), 
+			self.metadata.copy(), self.axes.copy())
+setattr(Variable, 'abs', absolute)
+	
 setattr(Variable, 'quiver', graphics.quiver)
 setattr(Variable, 'draw_minimap', graphics.draw_minimap)
+setattr(Variable, 'taylor', graphics.taylor)
+setattr(Variable, 'xyz', graphics.xyz)
+setattr(Variable, 'plot_trend', graphics.plot_trend)
+
+

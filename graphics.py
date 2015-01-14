@@ -90,34 +90,25 @@ def draw_minimap(self, colorbar = False) :
 	return axs
 
 def xyz(self) :
+	x, y = self.basemap(
+			*np.meshgrid(self.lon.edges, self.lat.edges))
+	return x, y, self.data 
+
+def XYZ(self) :
+	from mpl_toolkits.basemap import addcyclic
 	# need addcyclic if n/s-plaea
 	if self.basemap.projection in ['nplaea', 'splaea'] :
-		self._z, lons = addcyclic(self.data, np.array(self.lons))
-		self._x, self._y = self.basemap(
+		z, lons = addcyclic(self.data, np.array(self.lons))
+		x, y = self.basemap(
 			*np.meshgrid(lons, self.lats))
 	else :
-		self._x, self._y = self.basemap(
+		x, y = self.basemap(
 			*np.meshgrid(np.array(self.lons), self.lats))
-		self._z = self.data
-
-def x(self) :
-	if '_x' not in self.__dict__ :
-		self.xyz()
-	return self._x
-
-def y(self) :
-	if '_y' not in self.__dict__ :
-		self.xyz()
-	return self._y
-
-def z(self) :
-	if '_z' not in self.__dict__ :
-		self.xyz()
-	return self._z
+		z = self.data
+	return x, y, z
 
 def plot(self) :
 	import matplotlib.pyplot as plt
-	from mpl_toolkits.basemap import addcyclic
 	if len(self.axes) == 1 :
 		####################
 		# VERTICAL PROFILE #
@@ -153,7 +144,7 @@ def plot(self) :
 		if 'latitude' in self.axes and \
 				'longitude' in self.axes :
 			self.basemap.drawcoastlines()
-			graph = self.basemap.pcolormesh(self.x, self.y, self.z)
+			graph = self.basemap.pcolormesh(*self.xyz())
 			colorBar = plt.colorbar()
 			if 'units' in self.__dict__ :
 				colorBar.set_label(self.units)
@@ -213,6 +204,57 @@ def quiver(zonal, meridional, nx=15, ny=15, **kwargs) :
 			zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
 	graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
 	#plt.quiverkey(graph, 0...
+	return graph
+
+def taylor(reference, variables, rect=111) :
+	if not isinstance(variables, list) :
+		variables = [variables]
+	reference = reference.data
+	variables = [variable.data for variable in variables]
+	import matplotlib.pyplot as plt
+	from matplotlib.projections import PolarAxes
+	from mpl_toolkits.axisartist import SubplotHost
+	from mpl_toolkits.axisartist.floating_axes import GridHelperCurveLinear
+	from mpl_toolkits.axisartist.floating_axes import FloatingSubplot
+	from mpl_toolkits.axisartist.grid_finder import FixedLocator, DictFormatter
+	std_max = 1.2*max([variable.std() for variable in variables + [reference]])
+	tr = PolarAxes.PolarTransform()
+	corrLabels = np.concatenate((np.arange(0, 0.8, 0.2), [0.75, 0.85, 0.95, 0.99, 1]))
+	thetaLocations = np.arccos(corrLabels)
+	grid_locator1 = FixedLocator(thetaLocations)
+	tick_formatter1 = DictFormatter(
+			{thetaLocation:str(corrLabels) for thetaLocation, corrLabels
+			in zip(thetaLocations, corrLabels)})
+	grid_helper = GridHelperCurveLinear(tr,
+			extremes=(0, 0.5*np.pi, 0, std_max),
+			grid_locator1=grid_locator1,
+			tick_formatter1=tick_formatter1)
+	ax1 = FloatingSubplot(plt.gcf(), rect, grid_helper=grid_helper)
+	#ax1 = SubplotHost(plt.gcf(), 111, grid_helper=grid_helper)
+	ax1.set_aspect(1.)
+	#plt.xlim(-0.2*std_max, 1.1*std_max)
+	#plt.ylim(-0.2*std_max, 1.1*std_max)
+	plt.gcf().add_subplot(ax1)
+	ax1.axis["top"].set_axis_direction("bottom") # "Angle axis"
+	ax1.axis["top"].toggle(ticklabels=True, label=True)
+	ax1.axis["top"].major_ticklabels.set_axis_direction("top")
+	ax1.axis["top"].label.set_axis_direction("top")
+	ax1.axis["top"].label.set_text("Correlation")
+	ax1.axis["left"].set_axis_direction("bottom") # "X axis"
+	ax1.axis["left"].label.set_text("Standard deviation")
+	ax1.axis["right"].set_axis_direction("top") # "Y axis"
+	ax1.axis["right"].toggle(ticklabels=True)
+	ax1.axis["right"].major_ticklabels.set_axis_direction("left") 
+	ax1.axis["bottom"].set_visible(False)
+	ax1.scatter(*to_cartesian(reference.std(), 1))
+	for variable in variables :
+		ax1.scatter(
+				*to_cartesian(
+					variable.std(),
+					np.corrcoef(variable, reference)[0, 1]))
+
+def to_cartesian(std, corr) :
+	return std*corr, std*(1 - corr**2)**0.5
 
 class ccb(Normalize):
 	def __init__(self, vmin=None, vmax=None, midpoint=0, clip=False):
@@ -226,3 +268,22 @@ class ccb(Normalize):
 		x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
 		return ma.masked_array(np.interp(value, x, y))
 
+def plot_trend(self) :
+	import matplotlib.pyplot as plt
+	if len(self.slope.shape) == 0 :
+		if self.significance.data :
+			plt.plot(self.dts, self.line.data, lw=2)
+		else :
+			plt.plot(self.dts, self.line.data, ls='--')
+	elif len(self.slope.shape) == 2 :
+		if 'latitude' in self.shape.axes and\
+				'longitude' in self.shape.axes :
+			self.basemap.drawcoastlines()
+			graph = self.basemap.pcolormesh(*(self.slope*self.significance).xyz(),
+					cmap=plt.cm.seismic, norm=ccb())
+			colorBar = plt.colorbar()
+			if 'units' in self.__dict__ :
+				colorBar.set_label(self.units + 'per year')
+			graph = self.basemap.pcolormesh(*self.slope.xyz(),
+					cmap=plt.cm.seismic, norm=ccb(), alpha=0.1)
+			return graph, colorBar

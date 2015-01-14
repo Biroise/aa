@@ -76,7 +76,12 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 	# MONTHLY MEANS #
 	#################
 	if year == 'all' and month == None :
-		return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)
+		if region == 'Aa' and \
+				dataset in ['merra', 'era', 'cfsr'] and \
+				variable in ['qu', 'qv', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
+			return open('/media/POMNITIE/ensemble/'+dataset+'/Aa/'+variable+'.nc', fileOnly=fileOnly)
+		else :
+			return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)
 
 	################
 	# FULL DATASET #
