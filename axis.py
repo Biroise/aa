@@ -175,6 +175,18 @@ class TimeAxis(Axis) :
 				[epoch + timedelta(**{units: np.asscalar(offset)})
 				for offset in self.data])
 			self.units = None
+	
+	@property
+	def years(self) :
+		return np.array([dt.year for dt in self.data])
+
+	@property
+	def months(self) :
+		return np.array([dt.month for dt in self.data])
+
+	@property
+	def hours(self) :
+		return np.array([dt.hour for dt in self.data])
 
 
 class Longitudes(np.ndarray) :
@@ -200,7 +212,7 @@ class Longitudes(np.ndarray) :
 
 class Parallel(Axis) :
 	# the parallel being the longitudinal axis
-	def __init__(self, data, units, latitudes=[0]) :
+	def __init__(self, data, units='degrees', latitudes=[0]) :
 		self.data = data.view(Longitudes)
 		self.units = units
 	
@@ -236,7 +248,6 @@ class Parallel(Axis) :
 					[data[-1] - self.step/2]))
 		
 
-
 class Meridian(Axis) :
 	@property
 	def weights(self) :
@@ -268,6 +279,7 @@ def month(year, monthIndex) :
 			datetime(year + (monthIndex+1)/12, (monthIndex+1)%12, 1),
 			'co')
 	
+
 def angle_sub(a, b) :
 	return (a - b + 180)%360 -180
 

@@ -9,7 +9,6 @@ from variable import Variable
 
 import numpy as np
 
-
 def open(filePath, mode='r', reopen=False, fileOnly=False) :
 	"Picks the appropriate file_ subclass to model a gridded data file"
 	if isinstance(filePath, list) :
@@ -49,28 +48,57 @@ def cos(angleInDegrees) :
 def sin(angleInDegrees) :
 	return np.sin(angleInDegrees*np.pi/180.0)
 
-yearMonths = [(year, month) for year in range(1979, 2014)
-				for month in range(1, 13)]
-
 def stamp(year, month) :
 	return str(year)+str(month).zfill(2)
 
+reanalyses = ['ncar', 'doe', 'jra25', 'era', 'cfsr', 'merra', 'jra55']
+reanalysisNames = {
+'ncar':'NCEP NCAR R1', 
+'doe':'NCEP DOE R2', 
+'jra25':'JRA 25', 
+'era':'ERA Interim', 
+'cfsr':'NCEP CFSR',
+'merra':'MERRA', 
+'jra55':'JRA 55' 
+}
 
-reanalyses = ['era', 'merra', 'doe', 'ncar', 'jra25']
 
-def load(variable, dataset, year=None, month=None, region=None, reopen=False, fileOnly=False) :
+def load(variable, dataset=None, year=None, month=None, region=None, reopen=False, fileOnly=False) :
 	"customizable load function"
+
+	if variable == 'topo' :
+		return open('/home/adufour/topo/ETOPO1_Ice_g_gmt4.nc')
+
+	# composite variables
+	if len(variable) == 3 :
+		# net precipitation
+		if variable == 'p-e' :
+			return load('p', dataset, year, month, region, reopen, fileOnly) - \
+					load('e', dataset, year, month, region, reopen, fileOnly)
+		# stationary flux, qvs
+		if variable[0] == 'q' and variable[2] == 's' :
+			return load('q'+variable[1], dataset, year, month, region, reopen, fileOnly) - \
+					load('q'+variable[1]+'t', dataset, year, month, region, reopen, fileOnly)
+		# stationary flux, QVS
+		if variable[0] == 'Q' and variable[2] == 'S' :
+			return load('Q'+variable[1], dataset, year, month, region, reopen, fileOnly) - \
+					load('Q'+variable[1]+'T', dataset, year, month, region, reopen, fileOnly)
 
 	###############
 	# CLIMATOLOGY #
 	###############
 	if year == None and month == None :
 		if region == 'Aa' and \
-				dataset in ['merra', 'era', 'cfsr'] and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
 				variable in ['qu', 'qv', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
 			return open('/media/POMNITIE/climatology/Aa/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
+		if region == 'Aa' :
+				return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)(lat=(-90, 60))
+		elif region == 'Ar' :
+				return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)(lat=(60, 90))
 		else :
 			return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
+
 
 	#################
 	# MONTHLY MEANS #
@@ -80,8 +108,21 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 				dataset in ['merra', 'era', 'cfsr'] and \
 				variable in ['qu', 'qv', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
 			return open('/media/POMNITIE/ensemble/'+dataset+'/Aa/'+variable+'.nc', fileOnly=fileOnly)
+		if region == 'Aa' :
+				return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)(lat=(-90, 60))
+		elif region == 'Ar' :
+				return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)(lat=(60, 90))
 		else :
 			return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)
+
+	###################
+	# MOISTURE FLUXES #
+	###################
+	if variable in ['QU', 'QV'] :
+		variable = variable.lower()
+		return load(variable[0], dataset, year, month, region, reopen, fileOnly)* \
+				load(variable[1], dataset, year, month, region, reopen, fileOnly)
+		
 
 	################
 	# FULL DATASET #
@@ -131,6 +172,9 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
 			output = open('/media/SOUVIENSTOI/ncar/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
+		if output.dts[0].day != 1 :
+			from datetime import timedelta
+			output.dts -= timedelta(days = output.dts[0].day - 1)
 		if region == 'Ar' :
 			return output(lat=(60, 90))
 		if region == 'Aa' :
@@ -194,16 +238,16 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 		if variable in ['q', 'u', 'v', 'T'] :
 			if variable == 'T' :
 				variable = 't'
-			output = open('/home/adufour/jra25/3D/'
+			output = open('/media/ACUERDATE/jra25/3D/'
 					+str(year)+str(month).zfill(2)+'.grb', fileOnly=fileOnly)[variable][:, :12]
 		if variable in ['sp', 'qu', 'qv'] :
-			output = open('/home/adufour/jra25/2D/'+variable+'/'
+			output = open('/media/ACUERDATE/jra25/2D/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'thck' :
-			output = open('/media/REMEMBER/jra25/thck/'
+			output = open('/media/ACUERDATE/jra25/thck/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable in ['pwat', 'e', 'p'] :
-			output = open('/home/adufour/jra25/2D/'
+			output = open('/media/ACUERDATE/jra25/2D/'
 					+str(year)+str(month).zfill(2)+'.grb', fileOnly=fileOnly)
 			if variable == 'p' :
 				output = output['lsp'] + output['acpcp']
@@ -217,3 +261,18 @@ def load(variable, dataset, year=None, month=None, region=None, reopen=False, fi
 			return output(lat=(-90, -60))
 		else :
 			return output
+	
+	#######
+	# ASR #
+	#######
+	if dataset == 'asr' :
+		if variable in ['q', 'u', 'v', 'sp', 'thck'] :
+			output =  open('/home/adufour/asr/' + variable + 
+					'/' + str(year) + str(month).zfill(2) + '.nc')
+			if 'level' in output.axes :
+				output.axes['level'] = Vertical(output.levs/100, 'hPa')
+			return output
+	
+	raise Exception
+
+

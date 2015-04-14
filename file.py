@@ -3,7 +3,7 @@ import numpy as np
 from axis import Axes
 
 class File(object) :
-	def __init__(self, axes=None, variables=None) :
+	def __init__(self, variables=None, axes=None) :
 		if axes == None :
 			self.axes = Axes()
 		else :
@@ -62,5 +62,4 @@ class File(object) :
 				if 'units' in variable.metadata :
 					output.variables[variableName].units = variable.units
 				output.variables[variableName][:] = variable.data
-				# TODO metadata...
 

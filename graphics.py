@@ -45,7 +45,9 @@ def _get_minimap(self) :
 			else :
 				lats = tuple([self.metadata['latitude']]*2)
 		else :
-			raise NotImplementedError, 'Only longitude profiles are implemented'
+			print "Warning, default behaviour"
+			lats = 60, 60
+			#raise NotImplementedError, 'Only longitude profiles are implemented'
 		self._minimap = Basemap(
 			projection = 'cyl',
 			llcrnrlon = self.lons[0],
@@ -60,10 +62,13 @@ def _set_minimap(self, someMap) :
 def draw_minimap(self, colorbar = False) :
 	import matplotlib.gridspec as gridspec
 	import matplotlib.pyplot as plt
-	if isinstance(self.metadata['latitude'], tuple) :
-		lats = self.metadata['latitude']
+	if 'latitude' in self.metadata :
+		if isinstance(self.metadata['latitude'], tuple) :
+			lats = self.metadata['latitude']
+		else :
+			lats = tuple([self.metadata['latitude']]*2)
 	else :
-		lats = tuple([self.metadata['latitude']]*2)
+		lats = tuple([60]*2)
 	if colorbar :
 		plotGrid = gridspec.GridSpec(2, 2, hspace=0, height_ratios=[8, 1],
 				width_ratios=[20, 1])
@@ -82,7 +87,8 @@ def draw_minimap(self, colorbar = False) :
 				(360, lats[0])],
 			facecolor='red', alpha=0.5)
 	plt.gca().add_patch(p)
-	self.minimap.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
+	#self.minimap.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
+	self.minimap.drawmeridians(np.arange(0, 360, 45), labels=[0, 0, 0, 1])
 	plt.gca().set_aspect('auto')
 	plt.sca(axs[0])
 	plt.setp(axs[0].get_xticklabels(), visible=False)
@@ -114,11 +120,12 @@ def plot(self) :
 		# VERTICAL PROFILE #
 		####################
 		if 'level' in self.axes :
+			mask = ~np.isnan(self.data)
+			output = plt.plot(self.data[mask], self.levs[mask])
 			# make sure pressures decrease with height
 			if not plt.gca().yaxis_inverted() :
 				plt.gca().invert_yaxis()
-			else :
-				return plt.plot(self.data, self.axes['level'])
+			return output
 		###############
 		# TIME SERIES #
 		###############
@@ -136,15 +143,23 @@ def plot(self) :
 		####################
 		if 'latitude' in self.axes :
 			self.draw_minimap()
+			xlim(self.lats.min(), self.lats.max())
 			return plt.plot(self.lats, self.data)
 	elif len(self.axes) == 2 :
 		#######
 		# MAP #
 		#######
+		if self.data.min() < 0 :
+			cmap = plt.cm.seismic
+			norm = ccb() 
+		else :
+			cmap = None
+			norm = None
 		if 'latitude' in self.axes and \
 				'longitude' in self.axes :
 			self.basemap.drawcoastlines()
-			graph = self.basemap.pcolormesh(*self.xyz())
+			graph = self.basemap.pcolormesh(*self.xyz(),
+				cmap = cmap, norm = norm)
 			colorBar = plt.colorbar()
 			if 'units' in self.__dict__ :
 				colorBar.set_label(self.units)
@@ -156,7 +171,8 @@ def plot(self) :
 			axs = self.draw_minimap(True)
 			plt.xlim(0, len(self.lons))
 			plt.ylim(0, len(self.dts))
-			graph = plt.pcolormesh(self.data)
+			graph = plt.pcolormesh(self.data,
+					cmap = cmap, norm = norm)
 			plt.draw()
 			tickLabels = [tckL.get_text() 
 					for tckL in plt.gca().get_yticklabels()]
@@ -172,21 +188,15 @@ def plot(self) :
 		#####################
 		if 'longitude' in self.axes and 'level' in self.axes :
 			axs = self.draw_minimap(True)
-			plt.xlim(0, len(self.lons))
-			plt.ylim(0, len(self.levs))
+			x, y = np.meshgrid(self.lon.edges, self.lev.edges)
+			graph = plt.pcolormesh(
+					x, y, self.data,
+					cmap = cmap, norm = norm)
+			plt.xlim(self.lon[0], self.lon[-1])
+			plt.ylim(self.lev.edges[0], self.lev.edges[-1])
 			if self.levs[0] < self.levs[1] :
-				order = slice(None, None, -1)
-			else :
-				order = slice(None)
-			graph = plt.pcolormesh(self.data[order])
+				plt.gca().invert_yaxis()
 			plt.draw()
-			tickLabels = [tckL.get_text() 
-					for tckL in plt.gca().get_yticklabels()]
-			for idx, tickLabel in enumerate(tickLabels) :
-				if tickLabel != '' :
-					tickLabels[idx] = str(
-							self.levs[int(tickLabel)])
-			plt.gca().set_yticklabels(tickLabels[order])
 			plt.colorbar(graph, cax=axs[2])
 	else :
 		raise Exception, "Variable has too many axes or none"
@@ -204,6 +214,20 @@ def quiver(zonal, meridional, nx=15, ny=15, **kwargs) :
 			zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
 	graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
 	#plt.quiverkey(graph, 0...
+	return graph
+
+def streamplot(zonal, meridional, nx=15, ny=15, **kwargs) :
+	import matplotlib.pyplot as plt
+	zonal = zonal(lon=(-179, 179))
+	meridional = meridional(lon=(-179, 179))
+	zonal.basemap.drawcoastlines()
+	order = slice(None)
+	if zonal.lats[0] > zonal.lats[1] :
+		order = slice(None, None, -1)
+	u, v, x, y = zonal.basemap.transform_vector(
+			zonal.data[order], meridional.data[order], zonal.lons,
+			zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
+	graph = zonal.basemap.streamplot(x, y, u, v, **kwargs)
 	return graph
 
 def taylor(reference, variables, rect=111) :
@@ -276,8 +300,8 @@ def plot_trend(self) :
 		else :
 			plt.plot(self.dts, self.line.data, ls='--')
 	elif len(self.slope.shape) == 2 :
-		if 'latitude' in self.shape.axes and\
-				'longitude' in self.shape.axes :
+		if 'latitude' in self.slope.axes and\
+				'longitude' in self.slope.axes :
 			self.basemap.drawcoastlines()
 			graph = self.basemap.pcolormesh(*(self.slope*self.significance).xyz(),
 					cmap=plt.cm.seismic, norm=ccb())
@@ -285,5 +309,29 @@ def plot_trend(self) :
 			if 'units' in self.__dict__ :
 				colorBar.set_label(self.units + 'per year')
 			graph = self.basemap.pcolormesh(*self.slope.xyz(),
-					cmap=plt.cm.seismic, norm=ccb(), alpha=0.1)
+					cmap=plt.cm.seismic, norm=ccb(), alpha=0.01)
+			#cs = self.basemap.contour(*((-1)*self.significance+0.5).XYZ(), levels=[-0.1, 0])
 			return graph, colorBar
+		if 'longitude' in self.slope.axes and\
+				'level' in self.slope.axes :
+			axs = self.draw_minimap(True)
+			plt.xlim(0, len(self.lons))
+			plt.ylim(0, len(self.levs))
+			if self.levs[0] < self.levs[1] :
+				order = slice(None, None, -1)
+			else :
+				order = slice(None)
+			graph = plt.pcolormesh((self.slope*self.significance).data[order],
+					cmap=plt.cm.seismic, norm=ccb())
+			plt.draw()
+			plt.colorbar(graph, cax=axs[2])
+			graph = plt.pcolormesh(self.slope.data[order],
+					cmap=plt.cm.seismic, norm=ccb(), alpha=0.08)
+			tickLabels = [tckL.get_text() 
+					for tckL in plt.gca().get_yticklabels()]
+			for idx, tickLabel in enumerate(tickLabels) :
+				if tickLabel != '' :
+					tickLabels[idx] = str(
+							self.levs[int(tickLabel)])
+			plt.gca().set_yticklabels(tickLabels[order])
+

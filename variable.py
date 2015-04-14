@@ -7,7 +7,7 @@ import statistics
 
 
 class Variable(object) :
-	def __init__(self, data=None, metadata={}, axes=Axes()) :
+	def __init__(self, data=None, axes=Axes(), metadata={}) :
 		self.axes = axes
 		self.metadata = metadata
 		if type(data) != type(None) :
@@ -40,8 +40,8 @@ class Variable(object) :
 					# if it's a ':' slice, do nothing
 					if item[axisIndex] != slice(None) :
 						conditions[axisName] = \
-							(self.axes[axisName][item[axisIndex]].min(),
-							self.axes[axisName][item[axisIndex]].max())
+								(self.axes[axisName][item[axisIndex]].min(),
+								self.axes[axisName][item[axisIndex]].max())
 		return self(**conditions)
 
 	@property
@@ -69,11 +69,17 @@ class Variable(object) :
 				firstSlice[output.axes.index(axisName)] = 0
 				secondSlice[output.axes.index(axisName)] = 1
 				# linear interpolation !
-				output = \
-					(output[secondSlice]-output[firstSlice])/\
-							(output.axes[axisName][1] - output.axes[axisName][0])\
-						*(condition - output.axes[axisName][0]) \
-					+ output[firstSlice]
+				try :
+					output = \
+						(output[secondSlice]-output[firstSlice])/\
+								(output.axes[axisName][1] - output.axes[axisName][0])\
+							*(condition - output.axes[axisName][0]) \
+						+ output[firstSlice]
+				except IndexError :
+					# sometimes, due to rounding errors, extract_data will return one
+					# value when two were expected, thus output...[1] fails
+					output = output[firstSlice]
+				output.metadata[axisName] = condition
 		return output
 
 	def extract_data(self, **kwargs) :
@@ -107,19 +113,34 @@ class Variable(object) :
 				longitudeIndex = self.axes.index('longitude')
 				# longitude is assumed to be the last axis
 				return Variable(
-						np.concatenate((
+						data = np.concatenate((
 							self.data[tuple(slices.values())],
 							self.data[tuple(secondSlices.values())]),
 							axis=longitudeIndex),
-						self.metadata, newAxes)
+						axes = newAxes,
+						metadata = self.metadata)
 		return Variable(
-				self.data[tuple(slices.values())],
-				self.metadata.copy(), newAxes)
+				data = self.data[tuple(slices.values())],
+				axes = newAxes,
+				metadata = self.metadata.copy())
 	
 	def copy(self) :
-
-		return Variable(self.data.copy(),
-			self.metadata.copy(), self.axes.copy())
+		return Variable(
+				data = self.data.copy(),
+				axes = self.axes.copy(),
+				metadata = self.metadata.copy())
+	
+	def empty(self) :
+		return Variable(
+				data = np.empty(self.data.shape),
+				axes = self.axes.copy(),
+				metadata = {})
+	
+	def zeros(self) :
+		return Variable(
+				data = np.zeros(self.data.shape),
+				axes = self.axes.copy(),
+				metadata = {})
 	
 	def close(self) :
 		pass
@@ -127,7 +148,7 @@ class Variable(object) :
 	def write(self, filePath) :
 		from file import File
 		if 'shortName' not in self.metadata :
-			self.shortName = 'unknown'
+			self.metadata['shortName'] = 'unknown'
 		fileOut = File(axes=self.axes, variables={self.shortName:self})
 		fileOut.write(filePath)
 
@@ -171,26 +192,28 @@ class Variable(object) :
 				newMetaData = self.metadata.copy()
 				del newMetaData['thickness']
 				return Variable(
-							(self.data*self.thickness.data).sum(axis=axisIndex)/9.81,
-							newMetaData, newAxes
+							data = np.nansum(self.data*self.thickness.data,
+									axis=axisIndex)/9.81,
+							axes = newAxes,
+							metadata = newMetaData 
 						).averager(axisNames)
 			elif axisName == 'level' :
 				weightSlice = [None]*len(self.shape)
 				weightSlice[axisIndex] = slice(None)
 				return Variable(
-							(self.data*weights[weightSlice])\
-								.sum(axis=axisIndex)/9.81,
-							self.metadata.copy(),
-							newAxes
+							data = np.nansum(self.data*weights[weightSlice],
+									axis=axisIndex),
+							axes = newAxes,
+							metadata = self.metadata.copy()
 						).averager(axisNames)
 			else :
 				weightSlice = [None]*len(self.shape)
 				weightSlice[axisIndex] = slice(None)
 				return Variable(
-							(self.data*weights[weightSlice]/weights.mean())\
-									.mean(axis=axisIndex),
-							self.metadata.copy(),
-							newAxes
+							data = np.nanmean(self.data*weights[weightSlice]/weights.mean(),\
+									axis=axisIndex),
+							axes = newAxes,
+							metadata = self.metadata.copy()
 						).averager(axisNames)
 		# no axes left to average : return the result
 		else :
@@ -215,8 +238,9 @@ def wrap_operator(operatorName) :
 		# use the numpy operator on the Variable's data
 		# and return as a new varaible
 		return Variable(
-					getattr(self.data, operatorName)(operand),
-					self.metadata.copy(), self.axes.copy())
+					data = getattr(self.data, operatorName)(operand),
+					axes = self.axes.copy(),
+					metadata = self.metadata.copy())
 	return operator
 for operatorName in [
 			'__gt__', '__lt__', '__ge__', '__le__', '__eq__', '__ne__',
@@ -224,15 +248,44 @@ for operatorName in [
 			'__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
+seasons = ['DJF', 'MAM', 'JJA', 'SON']
+
+
+def wrap_extractor(monthNumbers) :
+	@property
+	def extractor(self) :
+		from variable import Variable
+		mask = np.zeros(len(self.dts), dtype=bool)
+		for monthNumber in monthNumbers :
+			mask += self.dt.months == monthNumber
+		newAxes = self.axes.copy()
+		newAxes['time'].data = self.dts[mask]
+		return Variable(
+				data=self.data[mask],
+				axes=newAxes,
+				metadata=self.metadata.copy())
+	return extractor
+periods = {monthName:[monthNumber+1] for monthNumber, monthName in 
+		enumerate(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 
+		'SEP', 'OCT', 'NOV', 'DEC'])}
+periods['DJF'] = [12, 1, 2]
+periods['MAM'] = [3, 4, 5]
+periods['JJA'] = [6, 7, 8]
+periods['SON'] = [9, 10, 11]
+for periodName, monthNumbers in periods.iteritems() :
+	setattr(Variable, periodName, wrap_extractor(monthNumbers))
+
 def absolute(self) :
 	return Variable(abs(self.data), 
 			self.metadata.copy(), self.axes.copy())
 setattr(Variable, 'abs', absolute)
 	
 setattr(Variable, 'quiver', graphics.quiver)
+setattr(Variable, 'streamplot', graphics.streamplot)
 setattr(Variable, 'draw_minimap', graphics.draw_minimap)
 setattr(Variable, 'taylor', graphics.taylor)
 setattr(Variable, 'xyz', graphics.xyz)
+setattr(Variable, 'XYZ', graphics.XYZ)
 setattr(Variable, 'plot_trend', graphics.plot_trend)
-
+setattr(Variable, 'div', statistics.div)
 

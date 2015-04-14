@@ -6,7 +6,6 @@ import operator as op
 #from scipy.io.netcdf import netcdf_file
 
 
-
 class File(aa.File) :
 	def __init__(self, filePath, mode) :
 		super(File, self).__init__()
@@ -29,6 +28,9 @@ class File(aa.File) :
 				elif aa.Axes.standardize(dimensionName) == 'latitude' :
 					self.axes['latitude'] = aa.Meridian(*args)
 				elif aa.Axes.standardize(dimensionName) == 'level' :
+					# convert pascals to hectopascals
+					if (args[0] > 10000).any() :
+						args[0] /= 100
 					self.axes['level'] = aa.Vertical(*args)
 				else :
 					self.axes[aa.Axes.standardize(dimensionName)] = aa.Axis(*args)
@@ -49,16 +51,18 @@ class File(aa.File) :
 						self._raw.variables[variableName].units
 			self.variables[variableName] = \
 					Variable(
-						self._raw.variables[variableName][:],
-						variableMetaData, variableAxes, self._raw)
+						data=self._raw.variables[variableName][:],
+						axes=variableAxes,
+						metadata=variableMetaData, 
+						rawFile=self._raw)
 	
 	def close(self) :
 		self._raw.close()
 
 
 class Variable(aa.Variable) :
-	def __init__(self, data, metadata, axes, rawFile)	:
-		super(Variable, self).__init__(data, metadata, axes)
+	def __init__(self, data, axes, metadata, rawFile)	:
+		super(Variable, self).__init__(data, axes, metadata)
 		self._raw = rawFile
 	
 	def close(self) :
