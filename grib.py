@@ -37,6 +37,8 @@ class File(aa.File) :
 		variablesLevels = {}					# variable - level type - level
 		variablesMetaData = {}
 		# loop through the variables and levels of the first time step
+		# default : grib has a time axis
+		timeDimension = True
 		while datetime(gribLine.year, gribLine.month, gribLine.day,
 					gribLine.hour, gribLine.minute, gribLine.second)\
 					== firstInstant :
@@ -59,6 +61,9 @@ class File(aa.File) :
 					.append(gribLine.level)
 			# move to the next line
 			gribLine = rawFile.readline()
+			if gribLine == None :
+				timeDimension = False
+				break
 		# find the longest vertical axis
 		maxLevelNumber = 0
 		for variableName, levelKinds in variablesLevels.iteritems() :
@@ -73,34 +78,35 @@ class File(aa.File) :
 					mainLevels = aa.Vertical(np.array(levels), levelType)
 		# the longest vertical axis gets to be the file's vertical axis
 		self.axes['level'] = mainLevels
-		#############
-		# TIME AXIS #
-		#############
-		# "seek/tell" index starts with 1
-		# but we've moved on the next instant at the end of the while loop
-		# hence the minus one
-		linesPerInstant = rawFile.tell() - 1
-		# determine the interval between two samples
-		secondInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
-					gribLine.hour, gribLine.minute, gribLine.second)
-		timeStep = secondInstant - firstInstant
-		# go to the end of the file
-		rawFile.seek(0, 2)
-		lastIndex = rawFile.tell()
-		# this index points at the last message
-		# e.g. f.message(lastIndex) returns the last message
-		# indices start at 1 meaning that lastIndex is also the
-		# number of messages in the file
-		self.axes['time'] = aa.TimeAxis(
-				np.array([firstInstant + timeIndex*timeStep
-					for timeIndex in range(lastIndex/linesPerInstant)]), None)
-		# check consistency
-		gribLine = rawFile.message(lastIndex)
-		lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
-					gribLine.hour, gribLine.minute, gribLine.second)
-		if lastInstant != self.axes['time'][-1] or \
-				lastIndex % linesPerInstant != 0 :
-			raise Exception, "Error in time axis"
+		if timeDimension :
+			#############
+			# TIME AXIS #
+			#############
+			# "seek/tell" index starts with 1
+			# but we've moved on the next instant at the end of the while loop
+			# hence the minus one
+			linesPerInstant = rawFile.tell() - 1
+			# determine the interval between two samples
+			secondInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
+						gribLine.hour, gribLine.minute, gribLine.second)
+			timeStep = secondInstant - firstInstant
+			# go to the end of the file
+			rawFile.seek(0, 2)
+			lastIndex = rawFile.tell()
+			# this index points at the last message
+			# e.g. f.message(lastIndex) returns the last message
+			# indices start at 1 meaning that lastIndex is also the
+			# number of messages in the file
+			self.axes['time'] = aa.TimeAxis(
+					np.array([firstInstant + timeIndex*timeStep
+						for timeIndex in range(lastIndex/linesPerInstant)]), None)
+			# check consistency
+			gribLine = rawFile.message(lastIndex)
+			lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
+						gribLine.hour, gribLine.minute, gribLine.second)
+			if lastInstant != self.axes['time'][-1] or \
+					lastIndex % linesPerInstant != 0 :
+				raise Exception, "Error in time axis"
 		rawFile.rewind()
 		#############
 		# VARIABLES #
@@ -110,7 +116,10 @@ class File(aa.File) :
 				conditions = {'shortName' : variableName.encode('ascii'),
 						'typeOfLevel' : levelType.encode('ascii')}
 				axes = aa.Axes()
-				axes['time'] = self.axes['time']
+				if timeDimension :
+					axes['time'] = self.axes['time']
+				else :
+					conditions['time'] = firstInstant
 				variableLabel = variableName + '_' + levelType
 				# does this variable have a vertical extension ?
 				# it may not be the file's vertical axis
@@ -219,13 +228,15 @@ class Variable(aa.Variable) :
 			################
 			# TIME & LEVEL #
 			################
-			# KLUDGE : assumes grib files always have a time dimension
 			if 'time' not in self.conditions :
 				newConditions['time'] = self.axes['time'].data
 			else :
 				# gribIndex won't want lists of datetimes
 				# but rather individual year/month/day/hour
 				del subConditions['time']
+				# make sure time condition is iterable
+				if not isinstance(newConditions['time'], list) :
+					newConditions['time'] = [newConditions['time']]
 			# if data is 2D, it will have already have a level condition
 			# idem if it's 3D and has already been sliced
 			# if not, that means the user wants all available levels

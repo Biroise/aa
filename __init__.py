@@ -18,8 +18,9 @@ def open(filePath, mode='r', reopen=False, fileOnly=False) :
 		if filePath.endswith('nc') :
 			from aa import netcdf
 			file_ = netcdf.File(filePath, mode)
-		elif filePath.endswith('grib') or filePath.endswith('grb') \
-				or filePath.endswith('grb2') :
+		#elif filePath.endswith('grib') or filePath.endswith('grb') \
+				#or filePath.endswith('grb2') :
+		else :
 			import os
 			filePath = os.path.abspath(filePath)
 			fileName = os.path.splitext(filePath)[0]
