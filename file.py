@@ -33,7 +33,8 @@ class File(object) :
 		# to the file is the user's responsability
 		with Dataset(filePath, 'w') as output :
 			for axisName, axis in self.axes.iteritems() :
-				output.createDimension(Axes.ncNorm[axisName], len(axis))
+				axisName = Axes.ncStandardize(axisName)
+				output.createDimension(axisName, len(axis))
 				if axisName == 'time' :
 					output.createVariable('time', int, ('time',))
 					output.variables['time'].units = 'seconds since 1970-1-1'
@@ -43,12 +44,14 @@ class File(object) :
 						(instant-epoch).total_seconds()
 						for instant in axis.data]
 				else :
-					axisName = Axes.ncNorm[axisName]
-					output.createVariable(
-							axisName,
-							type(np.asscalar(axis.data.ravel()[0])),
-							(axisName,))
-					output.variables[axisName][:] = axis.data
+					# this is a real axis with information worth recording
+					if self.axes[axisName].units != 'indices' or \
+							len(self.axes[axisName]) - 1 != self.axes[axisName][-1] :
+						output.createVariable(
+								axisName,
+								type(np.asscalar(axis.data.ravel()[0])),
+								(axisName,))
+						output.variables[axisName][:] = axis.data
 					# TODO metadata...
 			for variableName, variable in self.variables.iteritems() :
 				if variableName == '~' :
@@ -57,7 +60,7 @@ class File(object) :
 						variableName,
 						type(np.asscalar(variable.data.ravel()[0])),
 						tuple(
-							[Axes.ncNorm[axisName] for axisName in 
+							[Axes.ncStandardize(axisName) for axisName in 
 							variable.axes.keys()]))
 				if 'units' in variable.metadata :
 					output.variables[variableName].units = variable.units

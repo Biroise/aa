@@ -92,13 +92,13 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		if region == 'Aa' and \
 				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
 				variable in ['qu', 'qv', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
-			return open('/media/POMNITIE/climatology/Aa/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
+			return open('/media/Pomnitie/climatology/Aa/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
 		if region == 'Aa' :
-				return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)(lat=(-90, 60))
+				return open('/media/Pomnitie/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)(lat=(-90, -60))
 		elif region == 'Ar' :
-				return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)(lat=(60, 90))
+				return open('/media/Pomnitie/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)(lat=(60, 90))
 		else :
-			return open('/media/POMNITIE/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
+			return open('/media/Pomnitie/climatology/'+variable+'_'+dataset+'.nc', fileOnly=fileOnly)
 
 
 	#################
@@ -106,15 +106,15 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	#################
 	if year == 'all' and month == None :
 		if region == 'Aa' and \
-				dataset in ['merra', 'era', 'cfsr'] and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
 				variable in ['qu', 'qv', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
-			return open('/media/POMNITIE/ensemble/'+dataset+'/Aa/'+variable+'.nc', fileOnly=fileOnly)
+			return open('/media/Pomnitie/ensemble/'+dataset+'/Aa/'+variable+'.nc', fileOnly=fileOnly)
 		if region == 'Aa' :
-				return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)(lat=(-90, 60))
+				return open('/media/Pomnitie/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)(lat=(-90, 60))
 		elif region == 'Ar' :
-				return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)(lat=(60, 90))
+				return open('/media/Pomnitie/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)(lat=(60, 90))
 		else :
-			return open('/media/POMNITIE/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)
+			return open('/media/Pomnitie/ensemble/'+dataset+'/'+variable+'.nc', fileOnly=fileOnly)
 
 	###################
 	# MOISTURE FLUXES #
@@ -123,7 +123,6 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		variable = variable.lower()
 		return load(variable[0], dataset, year, month, region, reopen, fileOnly)* \
 				load(variable[1], dataset, year, month, region, reopen, fileOnly)
-		
 
 	################
 	# FULL DATASET #
@@ -136,8 +135,8 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	# ERA #
 	#######
 	if dataset == 'era' :
-		if variable in ['q', 'u', 'v'] :
-			output = open('/media/POMNITIE/era/3D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, fileOnly=fileOnly)
+		if variable in ['q', 'u', 'v', 'w'] :
+			output = open('/media/Pomnitie/era/3D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, fileOnly=fileOnly)
 			# open will return the variable since the file is otherwise empty
 			#output.levs /= 100
 			#output.lev.units = 'hPa'
@@ -146,14 +145,14 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 			for step in ['03', '06', '09', '12'] :
 				variables2D.append(prefix+step)
 		if variable in variables2D :
-			output =  open('/media/POMNITIE/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, fileOnly=fileOnly)
+			output =  open('/media/Pomnitie/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, fileOnly=fileOnly)
 		if variable in ['p', 'e'] :
-			output =  open('/media/POMNITIE/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
+			output =  open('/media/Pomnitie/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'thck' :
 			if region == 'Ar' :
-				return open('/media/POMNITIE/era/3D/thck_Ar/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
+				return open('/media/Pomnitie/era/3D/thck_Ar/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 			elif region == 'Aa' :
-				return open('/media/POMNITIE/era/3D/thck_Aa/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
+				return open('/media/Pomnitie/era/3D/thck_Aa/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 			else : 
 				raise Exception
 		if region == 'Ar' :
@@ -168,10 +167,10 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	########
 	if dataset == 'ncar' :
 		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck'] :
-			output = open('/media/SOUVIENSTOI/ncar/3D/'
+			output = open('/media/Remember/ncar/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)[:, :8]
 		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
-			output = open('/media/SOUVIENSTOI/ncar/2D/'
+			output = open('/media/Remember/ncar/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if output.dts[0].day != 1 :
 			from datetime import timedelta
@@ -188,10 +187,10 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	#######
 	if dataset == 'doe' :
 		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck'] :
-			output = open('/media/SOUVIENSTOI/doe/3D/'
+			output = open('/media/Remember/doe/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
-			output = open('/media/SOUVIENSTOI/doe/2D/'
+			output = open('/media/Remember/doe/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'e' :
 			output = output['lhtfl']
@@ -211,18 +210,18 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	if dataset == 'merra' :
 		# 2D variables first
 		if variable in ['pwat', 'qu', 'qv', 'e', 'p'] :
-			output = open('/media/REMEMBER/merra/'+variable+'/'
+			output = open('/media/Remember/merra/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		# 3D variables now
 		if region == 'Ar' :
 			if variable in ['q', 'u', 'v', 'sp', 'thck'] :
-				return open('/media/REMEMBER/merra/Ar/'+variable+'/'
+				return open('/media/Remember/merra/Ar/'+variable+'/'
 						+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 			else :
 				return output(lat=(60, 90))
 		elif region == 'Aa' :
 			if variable in ['q', 'u', 'v', 'sp', 'thck'] :
-				return open('/media/REMEMBER/merra/Aa/'+variable+'/'
+				return open('/media/Remember/merra/Aa/'+variable+'/'
 						+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 			else :
 				return output(lat=(-90, -60))
@@ -239,16 +238,16 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		if variable in ['q', 'u', 'v', 'T'] :
 			if variable == 'T' :
 				variable = 't'
-			output = open('/media/ACUERDATE/jra25/3D/'
+			output = open('/media/AcuerdaTe/jra25/3D/'
 					+str(year)+str(month).zfill(2)+'.grb', fileOnly=fileOnly)[variable][:, :12]
 		if variable in ['sp', 'qu', 'qv'] :
-			output = open('/media/ACUERDATE/jra25/2D/'+variable+'/'
+			output = open('/media/AcuerdaTe/jra25/2D/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'thck' :
-			output = open('/media/ACUERDATE/jra25/thck/'
+			output = open('/media/AcuerdaTe/jra25/thck/'
 					+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable in ['pwat', 'e', 'p'] :
-			output = open('/media/ACUERDATE/jra25/2D/'
+			output = open('/media/AcuerdaTe/jra25/2D/'
 					+str(year)+str(month).zfill(2)+'.grb', fileOnly=fileOnly)
 			if variable == 'p' :
 				output = output['lsp'] + output['acpcp']

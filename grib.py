@@ -147,6 +147,7 @@ class File(aa.File) :
 		##################
 		rawFile.close()
 		pickleFile = open(fileName+'.p', 'w')
+		#import pdb ; pdb.set_trace()
 		pickle.dump(self, pickleFile)
 		pickleFile.close()
 		gribIndex = pygrib.index(filePath,
@@ -236,7 +237,8 @@ class Variable(aa.Variable) :
 				del subConditions['time']
 				# make sure time condition is iterable
 				if not isinstance(newConditions['time'], list) :
-					newConditions['time'] = [newConditions['time']]
+					if not isinstance(newConditions['time'], np.ndarray) :
+						newConditions['time'] = [newConditions['time']]
 			# if data is 2D, it will have already have a level condition
 			# idem if it's 3D and has already been sliced
 			# if not, that means the user wants all available levels

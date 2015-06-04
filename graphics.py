@@ -142,8 +142,8 @@ def plot(self) :
 		# LATITUDE PROFILE #
 		####################
 		if 'latitude' in self.axes :
-			self.draw_minimap()
-			xlim(self.lats.min(), self.lats.max())
+			#self.draw_minimap()
+			plt.xlim(self.lats.min(), self.lats.max())
 			return plt.plot(self.lats, self.data)
 	elif len(self.axes) == 2 :
 		#######
@@ -198,6 +198,21 @@ def plot(self) :
 				plt.gca().invert_yaxis()
 			plt.draw()
 			plt.colorbar(graph, cax=axs[2])
+		#####################
+		#  LAT-LEV PROFILE  #
+		#####################
+		if 'latitude' in self.axes and 'level' in self.axes :
+			x, y = np.meshgrid(self.lat.edges, self.lev.edges)
+			graph = plt.pcolormesh(
+					x, y, self.data,
+					cmap = cmap, norm = norm)
+			plt.xlim(self.lat[0], self.lat[-1])
+			plt.ylim(self.lev.edges[0], self.lev.edges[-1])
+			if self.levs[0] < self.levs[1] :
+				plt.gca().invert_yaxis()
+			plt.draw()
+			plt.colorbar(graph)
+
 	else :
 		raise Exception, "Variable has too many axes or none"
 

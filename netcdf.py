@@ -32,8 +32,14 @@ class File(aa.File) :
 					if (args[0] > 10000).any() :
 						args[0] /= 100
 					self.axes['level'] = aa.Vertical(*args)
+				# it's not a conventional axis
 				else :
 					self.axes[aa.Axes.standardize(dimensionName)] = aa.Axis(*args)
+			# no variable goes by this dimension's name : create an axis of indices
+			else :
+				self.axes[dimensionName] = aa.Axis(
+						np.arange(len(self._raw.dimensions[dimensionName])),
+						units = 'indices')
 		#############
 		# VARIABLES #
 		#############
@@ -41,10 +47,12 @@ class File(aa.File) :
 				- set(self._raw.dimensions.keys()) :
 			variableAxes = aa.Axes()
 			for axisName in self._raw.variables[variableName].dimensions :
+				# conventional axes...
 				if axisName in aa.Axes.aliases :
 					axisName = aa.Axes.aliases[axisName]
-					if axisName in self.axes :
-						variableAxes[axisName] = self.axes[axisName]
+				# should always be true technically
+				if axisName in self.axes :
+					variableAxes[axisName] = self.axes[axisName]
 			variableMetaData = {'shortName':variableName}
 			if 'units' in self._raw.variables[variableName].__dict__ :
 				variableMetaData['units'] = \

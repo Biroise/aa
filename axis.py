@@ -13,13 +13,21 @@ class Axes(OrderedDict) :
 		'longitudes':'longitude', 'lon':'longitude',
 		'level':'level', 'levels':'level', 'lev':'level',
 		'time':'time', 'dt':'time', 't':'time',
+		'Time':'time',
 		'x':'longitude', 'y':'latitude', 'z':'level',
 		'level0':'level', 'PRES':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
 		'levs':'level', 'dts':'time'}
-	ncNorm = {'latitude':'lat', 'longitude':'lon',
+	ncStandard = {'latitude':'lat', 'longitude':'lon',
 			'level':'lev', 'time':'time'}
 	
+	@staticmethod
+	def ncStandardize (axisName) :
+		if axisName in Axes.ncStandard :
+			return Axes.ncStandard[axisName]
+		else :
+			return axisName
+
 	@staticmethod
 	def standardize(axisName) :
 		if axisName in Axes.aliases :
@@ -38,11 +46,16 @@ class Axes(OrderedDict) :
 		if attributeName in Axes.aliases :
 			return super(Axes, self).__getitem__(
 					Axes.aliases[attributeName])
-		if attributeName in Axes.shortcuts :
+		elif attributeName in Axes.shortcuts :
 			return super(Axes, self).__getitem__(
 					Axes.shortcuts[attributeName])[:]
-		# if no cases fit
-		raise AttributeError
+		else :
+			# an except clause to change the KeyError into a AttributeError
+			try :
+				return super(Axes, self).__getitem__(attributeName)
+			except :
+				raise AttributeError
+
 	
 	def copy(self) :
 		newAxes = Axes()
@@ -161,6 +174,7 @@ class Axis(object) :
 
 class TimeAxis(Axis) :
 	def __init__(self, data, unitDefinition=None) :
+		data = np.array(data)
 		super(TimeAxis, self).__init__(data, unitDefinition)
 		if unitDefinition != None :
 			# unit definition is conventionally :
@@ -212,7 +226,7 @@ class Longitudes(np.ndarray) :
 
 class Parallel(Axis) :
 	# the parallel being the longitudinal axis
-	def __init__(self, data, units='degrees', latitudes=[0]) :
+	def __init__(self, data, units='degrees') :
 		self.data = data.view(Longitudes)
 		self.units = units
 	
@@ -249,6 +263,9 @@ class Parallel(Axis) :
 		
 
 class Meridian(Axis) :
+	def __init__(self, data, units='degrees') :
+		super(Meridian, self).__init__(data, units)
+	
 	@property
 	def weights(self) :
 		return np.cos(self.data*np.pi/180.0)

@@ -88,8 +88,9 @@ class Variable(object) :
 		for axisName in self.axes :
 			# default behaviour : leave this dimension intact
 			slices[axisName] = slice(None)
-		# the new variable's axes
+		# the new variable's axes and metadata
 		newAxes = self.axes.copy()
+		newMetadata = self.metadata.copy()
 		# dispatch the conditions to the axes
 		for axisName, condition in kwargs.iteritems() :
 			item, newAxis = self.axes[axisName](condition)
@@ -98,7 +99,7 @@ class Variable(object) :
 			# if it's a single item, not a slice, get rid of the axis
 			if newAxis == None :
 				del newAxes[axisName]
-				self.metadata[axisName] = condition
+				newMetadata[axisName] = condition
 			else :
 				newAxes[axisName] = newAxis
 		# twisted longitudes...
@@ -118,11 +119,11 @@ class Variable(object) :
 							self.data[tuple(secondSlices.values())]),
 							axis=longitudeIndex),
 						axes = newAxes,
-						metadata = self.metadata)
+						metadata = newMetadata)
 		return Variable(
 				data = self.data[tuple(slices.values())],
 				axes = newAxes,
-				metadata = self.metadata.copy())
+				metadata = newMetadata)
 	
 	def copy(self) :
 		return Variable(
@@ -132,13 +133,13 @@ class Variable(object) :
 	
 	def empty(self) :
 		return Variable(
-				data = np.empty(self.data.shape),
+				data = np.empty(self.shape),
 				axes = self.axes.copy(),
 				metadata = {})
 	
 	def zeros(self) :
 		return Variable(
-				data = np.zeros(self.data.shape),
+				data = np.zeros(self.shape),
 				axes = self.axes.copy(),
 				metadata = {})
 	
