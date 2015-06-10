@@ -76,7 +76,7 @@ class Axes(OrderedDict) :
 
 class Axis(object) :
 	def __init__(self, data, units) :
-		self.data = data
+		self.data = np.array(data)
 		self.units = units
 	
 	def __getitem__(self, *args, **kwargs) :
@@ -91,30 +91,25 @@ class Axis(object) :
 		# should a range of indices be extracted ?
 		if type(condition) == tuple :
 			# if the user does not provide the type of boundaries
+			if len(condition) > 1 :
+				minValue = condition[0]
+				maxValue = condition[1]
 			if len(condition) == 2 :
 				# default boundaries are "closed-closed" unlike numpy
 				condition = condition + ('cc',)
 			# if the lower boundary is closed...
 			if condition[2][0] == 'c' :
-				lowerCondition = op.ge
+				minType = op.ge
 			else :
-				lowerCondition = op.gt
+				minType = op.gt
 			# if the upper boundary is closed...
 			if condition[2][1] == 'c' :
-				upperCondition = op.le
+				maxType = op.le
 			else :
-				upperCondition = op.lt
-			# extract the sub-axis related to the newConditions
-			mask = np.logical_and(
-				lowerCondition(self[:] - condition[0],
-						# adapt 0 to axis unit : number / timedelta(0)
-						type(self[0] - condition[0])(0)),
-				upperCondition(self[:] - condition[0], 
-					condition[1]-condition[0]))
-			# now extract the sub-axis corresponding to the condition
-			# this task is given to a function that can be over-ridden
+				maxType = op.lt
+			# the following tasks are given to a function that can be over-ridden
 			# by the subclasses of Axis (e.g. Parallel)
-			return self.make_slice(mask, condition)
+			return self.process_call(minValue, maxValue, minType, maxType)
 		# extract a single index only
 		else :
 			index = np.argmax(self[:] == condition)
@@ -127,10 +122,17 @@ class Axis(object) :
 				return index, None
 				# don't add this axis to newAxes
 
-	def make_slice(self, mask, condition) :
+	def process_call(self, minValue, maxValue, minType, maxType) :
+		mask = np.logical_and(
+				minType(self[:] - minValue,
+						# adapt 0 to axis unit : number / timedelta(0)
+						type(self[0] - minValue)(0)),
+				maxType(self[:] - minValue,
+						maxValue - minValue))
+		# now extract the sub-axis corresponding to the condition
 		return (slice(np.argmax(mask),
-				len(mask) - np.argmax(mask[::-1])),
-			Axis(self[mask], self.units))
+						len(mask) - np.argmax(mask[::-1])),
+				Axis(self[mask], self.units))
 
 	def __eq__(self, other) :
 		answer = False
@@ -191,6 +193,13 @@ class TimeAxis(Axis) :
 			self.units = None
 	
 	@property
+	def step(self) :
+		# extremely basic, won't work for irregular axes such as levels
+		a = np.abs(np.diff(self.data))
+		assert (a.min() - a.max()).total_seconds()/a[0].total_seconds() < 0.05
+		return a[0]
+	
+	@property
 	def years(self) :
 		return np.array([dt.year for dt in self.data])
 
@@ -203,51 +212,38 @@ class TimeAxis(Axis) :
 		return np.array([dt.hour for dt in self.data])
 
 
-class Longitudes(np.ndarray) :
-	def __eq__(self, toBeCompared) :
-		return super(Longitudes, self%360).__eq__(toBeCompared%360)
-	def __gt__(self, toBeCompared) :
-		return super(Longitudes, self%360).__gt__(toBeCompared%360)
-	def __ge__(self, toBeCompared) :
-		return super(Longitudes, self%360).__ge__(toBeCompared%360)
-	def __lt__(self, toBeCompared) :
-		return super(Longitudes, self%360).__lt__(toBeCompared%360)
-	def __le__(self, toBeCompared) :
-		return super(Longitudes, self%360).__le__(toBeCompared%360)
-	def __sub__(self, toSubstract) :
-		return super(Longitudes,
-				(super(Longitudes, self).__sub__(toSubstract) + 180)%360
-			).__sub__(180)
-	def min(self) :
-		return np.float(super(Longitudes, self).min())
-	def max(self) :
-		return np.float(super(Longitudes, self).max())
-
-
 class Parallel(Axis) :
 	# the parallel being the longitudinal axis
 	def __init__(self, data, units='degrees') :
-		self.data = data.view(Longitudes)
-		self.units = units
+		super(Parallel, self).__init__(data, units)
 	
-	def make_slice(self, mask, condition) :
-		# selected longitudes are at the beginning and end of the axis
-		if mask[0] and mask[-1] and not mask.all() :
-			# first slice, the end part
-			firstSlice = slice(-np.argmax(~mask[::-1]), None)
-			firstOffset = round((condition[0] - self[-1])/360)*360
-			secondSlice = slice(0, np.argmax(~mask)) 
-			secondOffset = round((condition[0] - self[0])/360)*360
-			return ((firstSlice, secondSlice), 
-				Parallel(np.hstack((
-						self[firstSlice] + firstOffset, 
-						self[secondSlice] + secondOffset)),
-					self.units))
-		else :
-			return (slice(np.argmax(mask), len(mask) - np.argmax(mask[::-1])),
-				Parallel(
-					self[mask] + round((condition[0]-self[mask][0])/360)*360,
-					self.units))
+	def process_call(self, minValue, maxValue, minType, maxType) :
+		# (x - x0)% 360 + x0 places x between x0 and x0 + 360
+		firstMask = minType(
+				self[:],
+				(minValue - self[0])%360 + self[0])
+		secondMask = maxType(
+				self[:],
+				(maxValue - self[0])%360 + self[0])
+		# slice loops from end to beginning of array
+		if maxValue - minValue >= 360 :
+			offset = minValue - (minValue - self[0])%360 - self[0]
+			firstSlice = slice(-np.argmax(~firstMask[::-1]), None)
+			secondSlice = slice(0, np.argmax(~secondMask)) 
+			return (
+					(firstSlice, secondSlice), 
+					Parallel(
+							np.hstack((
+								self[firstMask] + offset,
+								self[secondMask] + offset + 360))))
+		elif maxValue - minValue <= 360 :
+			mask = np.logical_and(firstMask, secondMask)
+			return (
+					slice(np.argmax(mask),
+							len(mask) - np.argmax(mask[::-1])),
+					Parallel(
+							(self[mask] - minValue)%360 + minValue,
+							self.units))
 	
 	@property
 	def edges(self) :

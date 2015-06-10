@@ -78,6 +78,7 @@ def draw_minimap(self, colorbar = False) :
 		plotGrid = gridspec.GridSpec(2, 1, hspace=0, height_ratios=[6, 1])
 		axs = [plt.subplot(plotGrid[0]), plt.subplot(plotGrid[1])]
 	plt.sca(axs[1])
+	plt.xlim(self.lons[0], self.lons[-1])
 	self.minimap.drawcoastlines()
 	self.minimap.drawparallels(lats, color='red')
 	p = plt.Polygon(

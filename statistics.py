@@ -24,7 +24,11 @@ def cycle(self) :
 	return output
 
 def trend (self) :
-	Y = self - self.cycle
+	if self.dt.step.days < 365 :
+		Y = self - self.cycle
+	# no use in substracting the annual cycle for annual values
+	else :
+		Y = self
 	beginning = Y.data[:-1]
 	end = Y.data[1:]
 	autocorr = ((beginning - beginning.mean(0))*(end - end.mean(0))/\
@@ -39,6 +43,7 @@ def trend (self) :
 	varRes_2 = ((residuals - residuals.mean(0))**2).sum(0)/(effectiveSampleSize - 2)
 	t_stat = slope.abs()*(((X - X.mean())**2).sum()/varRes_2)**0.5
 	from scipy.stats import t as student
+	# two sided student test p = 0.95 (check)
 	t_level = student.ppf(0.975, effectiveSampleSize - 1)
 	# per decade rates
 	return slope*24*365.25*10, t_stat > t_level

@@ -111,7 +111,7 @@ class Variable(object) :
 				secondSlices = slices.copy()
 				secondSlices['longitude'] = slices['longitude'][1]
 				slices['longitude'] = slices['longitude'][0]
-				longitudeIndex = self.axes.index('longitude')
+				longitudeIndex = newAxes.index('longitude')
 				# longitude is assumed to be the last axis
 				return Variable(
 						data = np.concatenate((

@@ -57,6 +57,12 @@ class File(aa.File) :
 			if 'units' in self._raw.variables[variableName].__dict__ :
 				variableMetaData['units'] = \
 						self._raw.variables[variableName].units
+			if 'long_name' in self._raw.variables[variableName].__dict__ :
+				variableMetaData['name'] = \
+						self._raw.variables[variableName].long_name
+			if 'description' in self._raw.variables[variableName].__dict__ :
+				variableMetaData['name'] = \
+						self._raw.variables[variableName].description
 			self.variables[variableName] = \
 					Variable(
 						data=self._raw.variables[variableName][:],

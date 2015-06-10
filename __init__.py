@@ -53,6 +53,7 @@ def stamp(year, month) :
 	return str(year)+str(month).zfill(2)
 
 reanalyses = ['ncar', 'doe', 'jra25', 'era', 'cfsr', 'merra', 'jra55']
+
 reanalysisNames = {
 'ncar':'NCEP NCAR R1', 
 'doe':'NCEP DOE R2', 
@@ -60,8 +61,23 @@ reanalysisNames = {
 'era':'ERA Interim', 
 'cfsr':'NCEP CFSR',
 'merra':'MERRA', 
-'jra55':'JRA 55' 
-}
+'jra55':'JRA 55'}
+
+reanalysisColours = {
+'ncar':'#1b9e77',
+'doe':'#d95f02',
+'jra25':'#7570b3',
+'era':'#e7298a',
+'cfsr':'#66a61e',
+'merra':'#e6ab02',
+'jra55':'#a6761d'}
+
+"""
+reanalysisColours = {}
+from colorsys import hls_to_rgb
+for idx, dataset in enumerate(reanalyses) :
+	reanalysisColours[dataset] = hls_to_rgb(np.linspace(0, 1, 8)[idx], 0.65, 1)
+"""
 
 
 def load(variable, dataset=None, year=None, month=None, region=None, reopen=False, fileOnly=False) :
@@ -78,8 +94,12 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 					load('e', dataset, year, month, region, reopen, fileOnly)
 		# stationary flux, qvs
 		if variable[0] == 'q' and variable[2] == 's' :
-			return load('q'+variable[1], dataset, year, month, region, reopen, fileOnly) - \
-					load('q'+variable[1]+'t', dataset, year, month, region, reopen, fileOnly)
+			if dataset == 'merra' :
+				return load('vi/q'+variable[1], dataset, year, month, region, reopen, fileOnly) - \
+						load('q'+variable[1]+'t', dataset, year, month, region, reopen, fileOnly)
+			else :
+				return load('q'+variable[1], dataset, year, month, region, reopen, fileOnly) - \
+						load('q'+variable[1]+'t', dataset, year, month, region, reopen, fileOnly)
 		# stationary flux, QVS
 		if variable[0] == 'Q' and variable[2] == 'S' :
 			return load('Q'+variable[1], dataset, year, month, region, reopen, fileOnly) - \
