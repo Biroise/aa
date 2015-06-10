@@ -140,4 +140,8 @@ def div(zonal, meridional) :
 		output.data[..., -1, :] =  output.data[..., -2, :]
 	return output
 	
-
+def std(self, axisName = 't') :
+	# input : one axis e.g. 't' or 'lon'
+	if len(axisName) > 1 :
+		axisName = [axisName]
+	return (((self - self.mean(axisName))**2).mean([axisName]))**0.5

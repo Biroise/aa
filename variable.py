@@ -289,4 +289,5 @@ setattr(Variable, 'xyz', graphics.xyz)
 setattr(Variable, 'XYZ', graphics.XYZ)
 setattr(Variable, 'plot_trend', graphics.plot_trend)
 setattr(Variable, 'div', statistics.div)
+setattr(Variable, 'std', statistics.std)
 
