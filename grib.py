@@ -197,7 +197,7 @@ class Variable(aa.Variable) :
 					# if it's a single index slice
 					if not isinstance(item[axisIndex], slice) :
 						conditions[axisName] = \
-							self.axes[axisName][item[axisIndex]]
+							self.axes[axisName].data[item[axisIndex]]
 					else :
 						# it's a slice
 						# if it's a ':' slice, do nothing

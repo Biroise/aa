@@ -85,10 +85,16 @@ class Axis(object) :
 					self.data.__getitem__(item),
 					self.units)
 		if isinstance(output.data, np.ndarray) :
-			if len(output) > 1 :
+			if output.data.size > 1 :
 				return output
 		else :
 			return None
+
+	def min(self) :
+		return self.data.min()
+
+	def max(self) :
+		return self.data.max()
 
 	def __len__(self) :
 		return len(self.data)

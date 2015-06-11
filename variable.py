@@ -38,7 +38,7 @@ class Variable(object) :
 					newAxes[axis] = newAxis
 				else :
 					del newAxes[axis]
-					newMetadata[axis] = self.axes[axis].data[item]
+					newMetadata[axis] = self.axes[axis].data[item[axisIndex]]
 		return Variable(
 				data = newData,
 				axes = newAxes,
@@ -71,9 +71,10 @@ class Variable(object) :
 				# linear interpolation !
 				try :
 					output = \
-						(output[secondSlice]-output[firstSlice])/\
-								(output.axes[axisName][1] - output.axes[axisName][0])\
-							*(condition - output.axes[axisName][0]) \
+						(output[secondSlice] - output[firstSlice])/\
+								(output.axes[axisName].data[1] - \
+										output.axes[axisName].data[0])\
+							*(condition - output.axes[axisName].data[0]) \
 						+ output[firstSlice]
 				except IndexError :
 					# sometimes, due to rounding errors, extract_data will return one
@@ -249,22 +250,6 @@ for operatorName in [
 			'__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
-seasons = ['DJF', 'MAM', 'JJA', 'SON']
-
-def wrap_extractor(monthNumbers) :
-	@property
-	def extractor(self) :
-		from variable import Variable
-		mask = np.zeros(len(self.dts), dtype=bool)
-		for monthNumber in monthNumbers :
-			mask += self.dt.months == monthNumber
-		newAxes = self.axes.copy()
-		newAxes['time'].data = self.dts[mask]
-		return Variable(
-				data=self.data[mask],
-				axes=newAxes,
-				metadata=self.metadata.copy())
-	return extractor
 periods = {monthName:[monthNumber+1] for monthNumber, monthName in 
 		enumerate(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 
 		'SEP', 'OCT', 'NOV', 'DEC'])}
@@ -272,8 +257,91 @@ periods['DJF'] = [12, 1, 2]
 periods['MAM'] = [3, 4, 5]
 periods['JJA'] = [6, 7, 8]
 periods['SON'] = [9, 10, 11]
+periods['JFMA'] = [1, 2, 3, 4]
+periods['JASO'] = [7, 8, 9, 10]
+
+def wrap_extractor(monthNumbers) :
+	@property
+	def extractor(self) :
+		mask = np.zeros(len(self.dts), dtype=bool)
+		for monthNumber in monthNumbers :
+			mask += self.dt.months == monthNumber
+		newAxes = self.axes.copy()
+		newAxes['time'] = self.dt[mask]
+		return Variable(
+				data=self.data[mask],
+				axes=newAxes,
+				metadata=self.metadata.copy())
+	return extractor
 for periodName, monthNumbers in periods.iteritems() :
 	setattr(Variable, periodName, wrap_extractor(monthNumbers))
+
+@property
+def yearly(self) :
+	# set of years covered by the dataset
+	years = range(self.dts[0].year, self.dts[-1].year + 1)
+	# array containing each time step's year
+	YEARS = self.dt.years
+	newAxes = self.axes.copy()
+	from axis import TimeAxis
+	from datetime import datetime
+	newAxes['time'] = TimeAxis([
+			datetime(year, 1, 1) for year in years])
+	newData = np.empty(newAxes.shape)
+	newData[:] = np.nan
+	for idx, year in enumerate(years) :
+		assert self.axes.keys()[0] == 'time'
+		newData[idx] = self.data[YEARS == year].mean(0)
+	return Variable(
+			data = newData,
+			axes = newAxes,
+			metadata = self.metadata.copy())
+setattr(Variable, 'yearly', yearly)
+	
+@property
+def monthly(self) :
+	from datetime import datetime
+	yearMonths = [datetime(year, month, 1)
+			for year in range(self.dts[0].year, self.dts[-1].year + 1)
+			for month in range(1, 13)]
+	# array containing each time step's year
+	YEARS = self.dt.years
+	# array containing each time step's month
+	MONTH = self.dt.months
+	# adjust first months
+	while yearMonths[0][1] != self.dts[0].month :
+		del yearMonths[0]
+	# adjust last months
+	while yearMonths[-1][1] == self.dts[-1].month :
+		del yearMonths[-1]
+	newAxes = self.axes.copy()
+	from axis import TimeAxis
+	newAxes['time'] = TimeAxis(yearMonths)
+	newData = np.empty(newAxes.shape)
+	newData[:] = np.nan
+	for idx, (year, month) in yearMonths :
+		newData[idx] = self.data[
+				np.logical_and(
+						YEARS == year,
+						MONTHS == month)].mean(0)
+	return Variable(
+			data = newData,
+			axes = newAxes,
+			metadata = self.metadata.copy())
+setattr(Variable, 'monthly', monthly)
+	
+
+"""
+def wrap_smoother(monthNumbers) :
+	@property
+	def smoother(self) :
+		return Variable(
+				)
+	return smoother
+for periodName, monthNumbers in periods.iteritems() :
+	setattr(Variable, periodName, wrap_smoother(monthNumbers))
+
+"""
 
 def absolute(self) :
 	return Variable(abs(self.data), 
