@@ -48,7 +48,7 @@ class Axes(OrderedDict) :
 					Axes.aliases[attributeName])
 		elif attributeName in Axes.shortcuts :
 			return super(Axes, self).__getitem__(
-					Axes.shortcuts[attributeName])[:]
+					Axes.shortcuts[attributeName]).data
 		else :
 			# an except clause to change the KeyError into a AttributeError
 			try :
@@ -79,10 +79,16 @@ class Axis(object) :
 		self.data = np.array(data)
 		self.units = units
 	
-	def __getitem__(self, *args, **kwargs) :
-		return self.data.__getitem__(*args, **kwargs)
-	def __setitem__(self, *args, **kwargs) :
-		return self.data.__setitem__(*args, **kwargs)
+	def __getitem__(self, item) :
+		# call the child constructor
+		output =  self.__class__(
+					self.data.__getitem__(item),
+					self.units)
+		if isinstance(output.data, np.ndarray) :
+			if len(output) > 1 :
+				return output
+		else :
+			return None
 
 	def __len__(self) :
 		return len(self.data)
@@ -112,9 +118,9 @@ class Axis(object) :
 			return self.process_call(minValue, maxValue, minType, maxType)
 		# extract a single index only
 		else :
-			index = np.argmax(self[:] == condition)
+			index = np.argmax(self.data == condition)
 			# if there is no exact match, send the neighbours
-			if index == 0 and self[0] != condition :
+			if index == 0 and self.data[0] != condition :
 				newCondition = (condition - self.step, \
 							condition + self.step, 'cc')
 				return self(newCondition)
@@ -124,20 +130,20 @@ class Axis(object) :
 
 	def process_call(self, minValue, maxValue, minType, maxType) :
 		mask = np.logical_and(
-				minType(self[:] - minValue,
+				minType(self.data - minValue,
 						# adapt 0 to axis unit : number / timedelta(0)
-						type(self[0] - minValue)(0)),
-				maxType(self[:] - minValue,
+						type(self.data[0] - minValue)(0)),
+				maxType(self.data - minValue,
 						maxValue - minValue))
 		# now extract the sub-axis corresponding to the condition
 		return (slice(np.argmax(mask),
 						len(mask) - np.argmax(mask[::-1])),
-				Axis(self[mask], self.units))
+				self[mask])
 
 	def __eq__(self, other) :
 		answer = False
 		if hasattr(other, 'data') and hasattr(other, 'units') :
-			if len(self.data) == len(other.data) and self.units == self.units :
+			if len(self) == len(other) and self.units == self.units :
 				if (self.data == other.data).all() :
 					answer = True
 		# if other has no data/units attributes e.g. "self == None ?"
@@ -168,20 +174,17 @@ class Axis(object) :
 		return np.ones(1)
 	
 	def copy(self) :
-		if isinstance(self.data, list) :
-			return self.__class__(self.data[:], self.units)
-		else :
-			return self.__class__(self.data.copy(), self.units)
+		return self.__class__(self.data.copy(), self.units)
 
 
 class TimeAxis(Axis) :
-	def __init__(self, data, unitDefinition=None) :
+	def __init__(self, data, units=None) :
 		data = np.array(data)
-		super(TimeAxis, self).__init__(data, unitDefinition)
-		if unitDefinition != None :
+		super(TimeAxis, self).__init__(data, units)
+		if units != None :
 			# unit definition is conventionally :
 			# seconds/hours/days since YYYY-MM-DD HH
-			words = unitDefinition.split()
+			words = units.split()
 			if words[1] != 'since' :
 				print "Unconventional definition of time units"
 			units = words[0]
@@ -220,29 +223,29 @@ class Parallel(Axis) :
 	def process_call(self, minValue, maxValue, minType, maxType) :
 		# (x - x0)% 360 + x0 places x between x0 and x0 + 360
 		firstMask = minType(
-				self[:],
-				(minValue - self[0])%360 + self[0])
+				self.data,
+				(minValue - self.data[0])%360 + self.data[0])
 		secondMask = maxType(
-				self[:],
-				(maxValue - self[0])%360 + self[0])
+				self.data,
+				(maxValue - self.data[0])%360 + self.data[0])
 		# slice loops from end to beginning of array
 		if maxValue - minValue >= 360 :
-			offset = minValue - (minValue - self[0])%360 - self[0]
+			offset = minValue - (minValue - self.data[0])%360 - self.data[0]
 			firstSlice = slice(-np.argmax(~firstMask[::-1]), None)
 			secondSlice = slice(0, np.argmax(~secondMask)) 
 			return (
 					(firstSlice, secondSlice), 
 					Parallel(
 							np.hstack((
-								self[firstMask] + offset,
-								self[secondMask] + offset + 360))))
+								self.data[firstMask] + offset,
+								self.data[secondMask] + offset + 360))))
 		elif maxValue - minValue <= 360 :
 			mask = np.logical_and(firstMask, secondMask)
 			return (
 					slice(np.argmax(mask),
 							len(mask) - np.argmax(mask[::-1])),
 					Parallel(
-							(self[mask] - minValue)%360 + minValue,
+							(self.data[mask] - minValue)%360 + minValue,
 							self.units))
 	
 	@property

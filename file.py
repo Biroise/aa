@@ -45,13 +45,14 @@ class File(object) :
 						for instant in axis.data]
 				else :
 					# this is a real axis with information worth recording
-					if self.axes[axisName].units != 'indices' or \
-							len(self.axes[axisName]) - 1 != self.axes[axisName][-1] :
+					if axis.units != 'indices' or len(axis) - 1 != axis[-1] :
 						output.createVariable(
 								axisName,
 								type(np.asscalar(axis.data.ravel()[0])),
 								(axisName,))
 						output.variables[axisName][:] = axis.data
+						if axis.units != None :
+							output.variables[axisName].units = axis.units
 					# TODO metadata...
 			for variableName, variable in self.variables.iteritems() :
 				if variableName == '~' :

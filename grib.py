@@ -180,6 +180,36 @@ class Variable(aa.Variable) :
 		else :
 			return super(Variable, self).shape
 	
+	def __getitem__(self, item) :
+		# if the variable is still in pure grib mode
+		if "_data" not in self.__dict__ :
+			conditions = {}
+			# make item iterable, even when it's a singleton
+			if not isinstance(item, tuple) :
+				if not isinstance(item, list) :
+					item = (item,)
+			# loop through axes in their correct order
+			# and match axis with a sub-item
+			for axisIndex, axisName in enumerate(self.axes) :
+				# there may be more axes than sub-items
+				# do not overshoot
+				if axisIndex < len(item) :
+					# if it's a single index slice
+					if not isinstance(item[axisIndex], slice) :
+						conditions[axisName] = \
+							self.axes[axisName][item[axisIndex]]
+					else :
+						# it's a slice
+						# if it's a ':' slice, do nothing
+						if item[axisIndex] != slice(None) :
+							conditions[axisName] = \
+									(self.axes[axisName][item[axisIndex]].min(),
+									self.axes[axisName][item[axisIndex]].max())
+			return self(**conditions)
+		# if _data already exists (as a numpy array), follow standard protocol
+		else :
+			return super(Variable, self).__getitem__(item)
+
 	def extract_data(self, **kwargs) :
 		"Extract a subset via its axes"
 		# if the variable is still in pure grib mode

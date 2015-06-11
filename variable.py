@@ -20,29 +20,29 @@ class Variable(object) :
 	data = property(_get_data, _set_data)
 
 	def __getitem__(self, item) :
-		conditions = {}
 		# make item iterable, even when it's a singleton
 		if not isinstance(item, tuple) :
 			if not isinstance(item, list) :
 				item = (item,)
+		newData = self.data[item].copy()
+		newAxes = self.axes.copy()
+		newMetadata = self.metadata.copy()
 		# loop through axes in their correct order
 		# and match axis with a sub-item
-		for axisIndex, axisName in enumerate(self.axes) :
+		for axisIndex, axis in enumerate(self.axes) :
 			# there may be more axes than sub-items
 			# do not overshoot
 			if axisIndex < len(item) :
-				# if it's a single index slice
-				if not isinstance(item[axisIndex], slice) :
-					conditions[axisName] = \
-						self.axes[axisName][item[axisIndex]]
+				newAxis = self.axes[axis][item[axisIndex]]
+				if newAxis != None :
+					newAxes[axis] = newAxis
 				else :
-					# it's a slice
-					# if it's a ':' slice, do nothing
-					if item[axisIndex] != slice(None) :
-						conditions[axisName] = \
-								(self.axes[axisName][item[axisIndex]].min(),
-								self.axes[axisName][item[axisIndex]].max())
-		return self(**conditions)
+					del newAxes[axis]
+					newMetadata[axis] = self.axes[axis].data[item]
+		return Variable(
+				data = newData,
+				axes = newAxes,
+				metadata = newMetadata)
 
 	@property
 	def shape(self) :
@@ -250,7 +250,6 @@ for operatorName in [
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
 seasons = ['DJF', 'MAM', 'JJA', 'SON']
-
 
 def wrap_extractor(monthNumbers) :
 	@property
