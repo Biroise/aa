@@ -187,10 +187,10 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	########
 	if dataset == 'ncar' :
 		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck'] :
-			output = open('/media/Remember/ncar/3D/'
+			output = open('/media/SouviensToi/ncar/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)[:, :8]
 		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
-			output = open('/media/Remember/ncar/2D/'
+			output = open('/media/SouviensToi/ncar/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if output.dts[0].day != 1 :
 			from datetime import timedelta
@@ -207,10 +207,10 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	#######
 	if dataset == 'doe' :
 		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck'] :
-			output = open('/media/Remember/doe/3D/'
+			output = open('/media/SouviensToi/doe/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable in ['e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
-			output = open('/media/Remember/doe/2D/'
+			output = open('/media/SouviensToi/doe/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', fileOnly=fileOnly)
 		if variable == 'e' :
 			output = output['lhtfl']

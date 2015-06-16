@@ -234,18 +234,22 @@ class Parallel(Axis) :
 		secondMask = maxType(
 				self.data,
 				(maxValue - self.data[0])%360 + self.data[0])
+		firstTrue = len(firstMask) - np.argmax(~firstMask[::-1])
+		firstFalse = np.argmax(~secondMask)
+		print firstTrue, firstFalse
 		# slice loops from end to beginning of array
-		if maxValue - minValue >= 360 :
+		if maxValue - minValue >= 360 or \
+				firstTrue >= firstFalse :
 			offset = minValue - (minValue - self.data[0])%360 - self.data[0]
-			firstSlice = slice(-np.argmax(~firstMask[::-1]), None)
-			secondSlice = slice(0, np.argmax(~secondMask)) 
+			firstSlice = slice(firstTrue, None)
+			secondSlice = slice(0, firstFalse)
 			return (
 					(firstSlice, secondSlice), 
 					Parallel(
 							np.hstack((
 								self.data[firstMask] + offset,
 								self.data[secondMask] + offset + 360))))
-		elif maxValue - minValue <= 360 :
+		else :
 			mask = np.logical_and(firstMask, secondMask)
 			return (
 					slice(np.argmax(mask),

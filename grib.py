@@ -104,7 +104,7 @@ class File(aa.File) :
 			gribLine = rawFile.message(lastIndex)
 			lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
 						gribLine.hour, gribLine.minute, gribLine.second)
-			if lastInstant != self.axes['time'][-1] or \
+			if lastInstant != self.dts[-1] or \
 					lastIndex % linesPerInstant != 0 :
 				raise Exception, "Error in time axis"
 		rawFile.rewind()
