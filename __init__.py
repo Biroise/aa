@@ -73,6 +73,7 @@ reanalysisColours = {
 'jra55':'#a6761d'}
 
 """
+# ggplot2 style colours
 reanalysisColours = {}
 from colorsys import hls_to_rgb
 for idx, dataset in enumerate(reanalyses) :
@@ -155,7 +156,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	# ERA #
 	#######
 	if dataset == 'era' :
-		if variable in ['q', 'u', 'v', 'w'] :
+		if variable in ['q', 'u', 'v', 'w', 'T'] :
 			output = open('/media/Pomnitie/era/3D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, fileOnly=fileOnly)
 			# open will return the variable since the file is otherwise empty
 			#output.levs /= 100

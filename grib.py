@@ -231,7 +231,7 @@ class Variable(aa.Variable) :
 					# to what datetimes and pressures
 					# do the conditions correspond ? slice former axis
 					newConditions[axisName] = \
-						self.axes[axisName][item]
+						self.axes[axisName][item].data
 					# make sure newConditions is still iterable though
 					if not isinstance(newConditions[axisName], list) :
 						if not isinstance(newConditions[axisName], np.ndarray) :

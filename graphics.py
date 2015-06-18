@@ -225,10 +225,14 @@ def quiver(zonal, meridional, nx=15, ny=15, **kwargs) :
 	order = slice(None)
 	if zonal.lats[0] > zonal.lats[1] :
 		order = slice(None, None, -1)
-	u, v, x, y = zonal.basemap.transform_vector(
-			zonal.data[order], meridional.data[order], zonal.lons,
-			zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
-	graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
+	if zonal.basemap.projection == 'cyl' :
+		x, y = np.meshgrid(zonal.lons, zonal.lats)
+		graph = zonal.basemap.quiver(x, y, zonal.data, meridional.data, **kwargs)
+	else :
+		u, v, x, y = zonal.basemap.transform_vector(
+				zonal.data[order], meridional.data[order], zonal.lons,
+				zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
+		graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
 	#plt.quiverkey(graph, 0...
 	return graph
 
