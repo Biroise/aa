@@ -1,6 +1,7 @@
 
 """
-An interface between scipy, netCDF4, pygrib and matplotlib's basemap
+Initialisation code for package aa
+Contains the critical 'open' function
 """
 
 from axis import *
@@ -63,11 +64,11 @@ def open(filePath, mode='r', reopen=False, fileOnly=False) :
 		return file_
 
 def dump(array, path) :
+	"a wrapper around pickle.dump"
 	import __builtin__
 	import cPickle as pickle
 	with __builtin__.open(path, 'w') as outFile :
 		pickle.dump(array, outFile)
-	
 	
 
 def cos(angleInDegrees) :
@@ -75,6 +76,19 @@ def cos(angleInDegrees) :
 
 def sin(angleInDegrees) :
 	return np.sin(angleInDegrees*np.pi/180.0)
+
+###########################
+# ADAPT TO YOUR OWN NEEDS #
+#   	                  #
+# 	 |	|  	  #
+# 	 |	|  	  #
+# 	 |	|  	  #
+# 	 \      /         #
+#   	  \    /          #
+#   	   \  /           #
+#   	    \/            #
+#   	                  #
+###########################
 
 reanalyses = ['ncar', 'doe', 'jra25', 'era', 'cfsr', 'merra', 'jra55']
 
@@ -224,9 +238,6 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		q = load(variable[0], dataset, year, month, region, reopen, fileOnly)
 		wind = load(variable[1], dataset, year, month, region, reopen, fileOnly)
 		return (q-q.mean('t'))*(wind-wind.mean('t'))
-
-
-
 
 	################
 	# FULL DATASET #

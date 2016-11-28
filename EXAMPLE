@@ -1,0 +1,21 @@
+
+me@computer:~$ python
+>>> from pylab import *
+>>> import aa
+>>> f = aa.open('file.nc')
+
+If you made the changes suggested in INSTALL to your .bashrc, you can simply do this instead
+me@computer:~$ aa file.nc
+By convention, a 'aa.File' object will be assigne to variable 'f'
+
+If the file contains a single variable, either method will assign the single variable to 'f' in the form of a 'aa.Variable' object
+
+If the file contains several variables, you can access via a dictionary attribute :
+>>> f.variables
+{'var1': <...>, 'var2': <...> ; ...}
+>>> myVariable = f.variables['var2']
+OR
+>>> myVariable = f.var2
+
+
+
