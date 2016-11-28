@@ -2,49 +2,61 @@
 import numpy as np
 from datetime import datetime
 
-def cycle(self) :
-	years = ((self.dts[-1] - self.dts[0]).days/365 + 1)
-	start = self.dts[0]
-	end = datetime(start.year + years, start.month, start.day)
-	dts = [(dt - start).total_seconds()/3600 for dt in list(self.dts) + [end]] 
-	deltas = np.diff(dts)
-	span = deltas.sum()
-	dts = np.array(dts[:-1])
+def cycle(self, harmonics=3) :
+	dts = self.dt.total_seconds/(3600*24)
 	spatialize = [slice(None)] + [None]*len(self.shape[1:])
 	temporalize = [None] + [slice(None)]*len(self.shape[1:])
-	A = np.nanmean(self.data*
-			(np.cos(2*np.pi*years*dts/span)*deltas)[spatialize]
-			*2./span, 0)[temporalize]*self.shape[0]
-	B = np.nanmean(self.data*
-			(np.sin(2*np.pi*years*dts/span)*deltas)[spatialize]
-			*2./span, 0)[temporalize]*self.shape[0]
-	output = self.copy()
-	output.data = A*np.cos(2*np.pi*years*dts/span)[spatialize] \
-			+ B*np.sin(2*np.pi*years*dts/span)[spatialize]
+	output = self.zeros()
+	for i in range(1, harmonics+1) :
+		A = np.nanmean(self.data*
+				(np.cos(2*np.pi*dts*i/365.25))[spatialize],
+				0)[temporalize]*2
+		B = np.nanmean(self.data*
+				(np.sin(2*np.pi*dts*i/365.25))[spatialize],
+				0)[temporalize]*2
+		output.data += A*np.cos(2*np.pi*dts*i/365.25)[spatialize] \
+				+ B*np.sin(2*np.pi*dts*i/365.25)[spatialize]
 	return output
 
 def trend (self) :
 	if self.dt.step.days < 365 :
-		Y = self - self.cycle
-	# no use in substracting the annual cycle for annual values
+		Y = self.yearly
 	else :
 		Y = self
 	beginning = Y.data[:-1]
 	end = Y.data[1:]
-	autocorr = ((beginning - beginning.mean(0))*(end - end.mean(0))/\
-			(beginning.std(0)*end.std(0))).mean(0)
+	autocorr = np.nanmean(
+			(beginning - np.nanmean(beginning, 0))*\
+					(end - np.nanmean(end, 0))/\
+					(np.nanstd(beginning, 0)*np.nanstd(end, 0)),
+			0)
 	# predictor
-	X = np.array([(dt - Y.dts[0]).total_seconds()/3600 for dt in Y.dts])
+	X = Y.dt.total_seconds/3600
 	spatialize = [slice(None)] + [None]*len(Y.shape[1:])
-	slope = ((Y - Y.mean('t'))*((X - X.mean())/X.var())[spatialize]).mean('t')
-	residuals = Y.data - slope.data*(X - X.mean())[spatialize] - Y.data.mean(0)
+	# slope = covariance(x, y)/variance(x)
+	slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
+	# residuals = Y - AX - B
+	residuals = Y.data - slope.data*(X - np.nanmean(X))[spatialize] - np.nanmean(Y.data, 0)
 	# taking autocorrelation into account
 	effectiveSampleSize = len(Y.dts)*(1 - autocorr)/(1 + autocorr)
-	varRes_2 = ((residuals - residuals.mean(0))**2).sum(0)/(effectiveSampleSize - 2)
-	t_stat = slope.abs()*(((X - X.mean())**2).sum()/varRes_2)**0.5
+	# variance of the residuals
+	# mean(residuals) = 0
+	# two parameters have been estimated : -2
+	varianceResiduals = np.nansum(
+			(residuals - 0)**2, 0)/(effectiveSampleSize - 2)
+	# std of the sampling distribution of the slope
+	sigmaSlope = (varianceResiduals/((X - X.mean())**2).sum())**0.5
+	# test statistic under the null hypothesis slope == 0
+	# see Wilks page 141
+	t_stat = (slope.abs() - 0)/sigmaSlope
 	from scipy.stats import t as student
-	# two sided student test p = 0.95 (check)
-	t_level = student.ppf(0.975, effectiveSampleSize - 1)
+	# two sided student test p = 0.95 becomes a one sided p = 0.975
+	# what test statistics should we surpass ?
+	# minus two degrees of freedom, again
+	t_level = student.ppf(0.975, effectiveSampleSize - 2)
+	# also possible : use cdf to determine p-value of t_stat
+	p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
+	#print slope.data, sigmaSlope, p_value
 	# per decade rates
 	return slope*24*365.25*10, t_stat > t_level
 
@@ -58,12 +70,30 @@ def significance(self) :
 		self._slope, self._significance = self.trend
 	return self._significance
 
+def ante(self) :
+	X = np.array([(dt - self.dts[0]).total_seconds()/(3600*24*365.25*10) 
+			for dt in self.dts])
+	output = self.slope.empty()
+	output.data = self.slope.data*\
+					(X[0] - np.nanmean(X)) \
+			+ np.nanmean(self.data, 0)
+	return output
+
+def post(self) :
+	X = np.array([(dt - self.dts[0]).total_seconds()/(3600*24*365.25*10) 
+			for dt in self.dts])
+	output = self.slope.empty()
+	output.data = self.slope.data*\
+					(X[-1] - np.nanmean(X)) \
+			+ np.nanmean(self.data, 0)
+	return output
+
 def line(self) :
-	X = np.array([(dt - self.dts[0]).total_seconds()/(3600*24*365.25) \
+	X = np.array([(dt - self.dts[0]).total_seconds()/(3600*24*365.25*10) 
 			for dt in self.dts])
 	spatialize = [slice(None)] + [None]*len(self.slope.shape)
 	temporalize = [None] + [slice(None)]*len(self.slope.shape)
-	output = self.copy()
+	output = self.empty()
 	output.data = self.slope.data[temporalize]*\
 					(X - X.mean())[spatialize] \
 			+ self.data.mean(0)[temporalize]
@@ -139,9 +169,33 @@ def div(zonal, meridional) :
 	if output.lats[-1] in [-90, 90] :
 		output.data[..., -1, :] =  output.data[..., -2, :]
 	return output
-	
-def std(self, axisName = 't') :
-	# input : one axis e.g. 't' or 'lon'
-	if len(axisName) > 1 :
-		axisName = [axisName]
-	return (((self - self.mean(axisName))**2).mean([axisName]))**0.5
+
+def rot(zonal, meridional) :
+	output = zonal.empty()
+	output.data = zonal_diff(meridional) - meridional_diff(
+			zonal*np.cos(meridional.lats[:, None]*np.pi/180))
+	output.data /=  6371000*np.cos(meridional.lats[:, None]*np.pi/180)
+	#output.data[0] /=  6371000*np.cos(meridional.lats[:2].mean()*np.pi/180)
+	#output.data[-1] /=  6371000*np.cos(meridional.lats[-2:].mean()*np.pi/180)
+	if output.lats[0] in [-90, 90] :
+		output.data[..., 0, :] =  output.data[..., 1, :]
+	if output.lats[-1] in [-90, 90] :
+		output.data[..., -1, :] =  output.data[..., -2, :]
+	return output
+
+def grad(variable) :
+	output = variable.empty(), variable.empty()
+	output[0].data = zonal_diff(variable)
+	output[1].data = meridional_diff(variable)
+	output[0].data /=  6371000*np.cos(variable.lats[:, None]*np.pi/180)
+	output[1].data /=  6371000
+	#output.data[0] /=  6371000*np.cos(meridional.lats[:2].mean()*np.pi/180)
+	#output.data[-1] /=  6371000*np.cos(meridional.lats[-2:].mean()*np.pi/180)
+	if variable.lats[0] in [-90, 90] :
+		output[0].data[..., 0, :] =  output[0].data[..., 1, :]
+		output[1].data[..., 0, :] =  output[1].data[..., 1, :]
+	if variable.lats[-1] in [-90, 90] :
+		output[0].data[..., -1, :] =  output[0].data[..., -2, :]
+		output[1].data[..., -1, :] =  output[1].data[..., -2, :]
+	return output
+

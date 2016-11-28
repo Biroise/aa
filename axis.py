@@ -10,10 +10,11 @@ earthRadius = 6371000
 class Axes(OrderedDict) :
 	aliases = {'latitude':'latitude', 'latitudes':'latitude',
 		'lat':'latitude', 'longitude':'longitude',
+		'XDim':'longitude', 'YDim':'latitude',
 		'longitudes':'longitude', 'lon':'longitude',
 		'level':'level', 'levels':'level', 'lev':'level',
 		'time':'time', 'dt':'time', 't':'time',
-		'Time':'time',
+		'Time':'time', 'TIME':'time',
 		'x':'longitude', 'y':'latitude', 'z':'level',
 		'level0':'level', 'PRES':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
@@ -75,7 +76,7 @@ class Axes(OrderedDict) :
 
 
 class Axis(object) :
-	def __init__(self, data, units) :
+	def __init__(self, data, units=None) :
 		self.data = np.array(data)
 		self.units = units
 	
@@ -98,6 +99,11 @@ class Axis(object) :
 
 	def __len__(self) :
 		return len(self.data)
+
+	def condition_matched(self, condition) :
+		index = np.argmax(self.data == condition)
+		notMatched = index == 0 and self.data[0] != condition
+		return index, notMatched
 
 	def __call__(self, condition) :
 		# should a range of indices be extracted ?
@@ -124,16 +130,16 @@ class Axis(object) :
 			return self.process_call(minValue, maxValue, minType, maxType)
 		# extract a single index only
 		else :
-			index = np.argmax(self.data == condition)
+			index, notMatched = self.condition_matched(condition)
 			# if there is no exact match, send the neighbours
-			if index == 0 and self.data[0] != condition :
+			if notMatched :
 				newCondition = (condition - self.step, \
 							condition + self.step, 'cc')
 				return self(newCondition)
 			else :
 				return index, None
 				# don't add this axis to newAxes
-
+	
 	def process_call(self, minValue, maxValue, minType, maxType) :
 		mask = np.logical_and(
 				minType(self.data - minValue,
@@ -220,12 +226,22 @@ class TimeAxis(Axis) :
 	def hours(self) :
 		return np.array([dt.hour for dt in self.data])
 
+	@property
+	def total_seconds(self) :
+		return np.array([(dt - self.data[0]).total_seconds() for dt in self.data])
 
 class Parallel(Axis) :
 	# the parallel being the longitudinal axis
 	def __init__(self, data, units='degrees') :
 		super(Parallel, self).__init__(data, units)
 	
+	def condition_matched(self, condition) :
+		dataStd = (self.data - self.data[0])%360 + self.data[0]
+		conditionStd = (condition - self.data[0])%360 + self.data[0]
+		index = np.argmax(dataStd == conditionStd)
+		notMatched = index == 0 and dataStd[0] != conditionStd
+		return index, notMatched
+
 	def process_call(self, minValue, maxValue, minType, maxType) :
 		# (x - x0)% 360 + x0 places x between x0 and x0 + 360
 		firstMask = minType(
@@ -234,8 +250,16 @@ class Parallel(Axis) :
 		secondMask = maxType(
 				self.data,
 				(maxValue - self.data[0])%360 + self.data[0])
-		firstTrue = np.argmax(firstMask)
-		firstFalse = np.argmax(~secondMask)
+		# argmax will return 0 if the array is all False
+		# not the expected result for the slicing later on
+		if firstMask.any() :
+			firstTrue = np.argmax(firstMask)
+		else :
+			firstTrue = len(firstMask)
+		if secondMask.all() :
+			firstFalse = len(secondMask)
+		else :
+			firstFalse = np.argmax(~secondMask)
 		offset = minValue - (minValue - self.data[0])%360 - self.data[0]
 		# 00011111 (firstMask)
 		# 11111100 (secondMask)
@@ -248,9 +272,19 @@ class Parallel(Axis) :
 					Parallel(
 							(self.data[mask] - minValue)%360 + minValue,
 							self.units))
+		# firstMask is empty (it happens when slicing near the beginning)
+		elif firstTrue == len(firstMask) and maxValue - minValue < 360 :
+			mask = secondMask
+			return (
+					slice(np.argmax(mask),
+							len(mask) - np.argmax(mask[::-1])),
+					Parallel(
+							(self.data[mask] - minValue)%360 + minValue,
+							self.units))
 		else :
 			# return : 00011111 + 11111100
-			firstSlice = slice(firstTrue, None)
+			#firstSlice = slice(firstTrue, None)
+			firstSlice = slice(firstTrue, len(self))
 			lastSlice = slice(0, firstFalse)
 			return (
 					(firstSlice, lastSlice), 
@@ -258,8 +292,6 @@ class Parallel(Axis) :
 							np.hstack((
 								self.data[firstMask] + offset,
 								self.data[secondMask] + offset + 360))))
-			firstSlice = slice(firstTrue, None)
-			lastSlice = slice(0, firstFalse)
 			
 	@property
 	def edges(self) :

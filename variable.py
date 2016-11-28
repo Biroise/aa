@@ -61,9 +61,10 @@ class Variable(object) :
 		for axisName, condition in kwargs.iteritems() :
 			# did we ask for a single value for an axis
 			# yet still have this axis in the output variable ?
-			# this means extract_data returned the neighbouring points
+			# this signifies extract_data returned the neighbouring points
 			# because this single value is not on the grid
 			if type(condition) != tuple and axisName in output.axes :
+				output.data # kludge for grib files
 				firstSlice = [slice(None)]*len(output.shape)
 				secondSlice = [slice(None)]*len(output.shape)
 				firstSlice[output.axes.index(axisName)] = 0
@@ -212,7 +213,7 @@ class Variable(object) :
 				weightSlice = [None]*len(self.shape)
 				weightSlice[axisIndex] = slice(None)
 				return Variable(
-							data = np.nanmean(self.data*weights[weightSlice]/weights.mean(),\
+							data = np.nanmean(self.data*weights[weightSlice]/np.nanmean(weights),\
 									axis=axisIndex),
 							axes = newAxes,
 							metadata = self.metadata.copy()
@@ -224,11 +225,12 @@ class Variable(object) :
 	basemap = property(graphics._get_basemap, graphics._set_basemap)
 	minimap = property(graphics._get_minimap, graphics._set_minimap)
 	plot = property(graphics.plot)
-	cycle = property(statistics.cycle)
 	trend = property(statistics.trend)
 	slope = property(statistics.slope)
 	significance = property(statistics.significance)
 	line = property(statistics.line)
+	ante = property(statistics.ante)
+	post = property(statistics.post)
 	
 # allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
@@ -250,15 +252,18 @@ for operatorName in [
 			'__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
+monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 
+		'SEP', 'OCT', 'NOV', 'DEC']
+seasonNames = ['DJF', 'MAM', 'JJA', 'SON']
 periods = {monthName:[monthNumber+1] for monthNumber, monthName in 
-		enumerate(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 
-		'SEP', 'OCT', 'NOV', 'DEC'])}
+		enumerate(monthNames)}
 periods['DJF'] = [12, 1, 2]
 periods['MAM'] = [3, 4, 5]
 periods['JJA'] = [6, 7, 8]
 periods['SON'] = [9, 10, 11]
 periods['JFMA'] = [1, 2, 3, 4]
 periods['JASO'] = [7, 8, 9, 10]
+periods['NDJFM'] = [11, 12, 1, 2, 3]
 
 def wrap_extractor(monthNumbers) :
 	@property
@@ -268,8 +273,14 @@ def wrap_extractor(monthNumbers) :
 			mask += self.dt.months == monthNumber
 		newAxes = self.axes.copy()
 		newAxes['time'] = self.dt[mask]
+		maskSlice = []
+		for axis in newAxes :
+			if axis == 'time' :
+				maskSlice.append(mask)
+			else : 
+				maskSlice.append(slice(None))
 		return Variable(
-				data=self.data[mask],
+				data=self.data[maskSlice],
 				axes=newAxes,
 				metadata=self.metadata.copy())
 	return extractor
@@ -291,7 +302,7 @@ def yearly(self) :
 	newData[:] = np.nan
 	for idx, year in enumerate(years) :
 		assert self.axes.keys()[0] == 'time'
-		newData[idx] = self.data[YEARS == year].mean(0)
+		newData[idx] = np.nanmean(self.data[YEARS == year], axis=0)
 	return Variable(
 			data = newData,
 			axes = newAxes,
@@ -307,29 +318,61 @@ def monthly(self) :
 	# array containing each time step's year
 	YEARS = self.dt.years
 	# array containing each time step's month
-	MONTH = self.dt.months
+	MONTHS = self.dt.months
 	# adjust first months
-	while yearMonths[0][1] != self.dts[0].month :
+	while yearMonths[0].month != self.dts[0].month :
 		del yearMonths[0]
 	# adjust last months
-	while yearMonths[-1][1] == self.dts[-1].month :
+	while yearMonths[-1].month != self.dts[-1].month :
 		del yearMonths[-1]
 	newAxes = self.axes.copy()
 	from axis import TimeAxis
 	newAxes['time'] = TimeAxis(yearMonths)
 	newData = np.empty(newAxes.shape)
 	newData[:] = np.nan
-	for idx, (year, month) in yearMonths :
-		newData[idx] = self.data[
-				np.logical_and(
-						YEARS == year,
-						MONTHS == month)].mean(0)
+	for idx, yearMonth in enumerate(yearMonths) :
+		maskSlice = []
+		for axis in newAxes :
+			if axis == 'time' :
+				maskSlice.append(
+						np.logical_and(
+								YEARS == yearMonth.year,
+								MONTHS == yearMonth.month))
+			else : 
+				maskSlice.append(slice(None))
+		newData[idx] = np.nanmean(self.data[maskSlice], 0)
 	return Variable(
 			data = newData,
 			axes = newAxes,
 			metadata = self.metadata.copy())
 setattr(Variable, 'monthly', monthly)
 	
+@property
+def seasonal(self) :
+	from file import File
+	# seasonal returns a file to avoid ambiguities
+	# on which is the first season
+	variables = {}
+	for ssn in seasonNames :
+		variables[ssn] = getattr(self, ssn).yearly.mean('t')
+	axes = variables[ssn].axes.copy()
+	return File(axes=axes, variables=variables)
+setattr(Variable, 'seasonal', seasonal)
+
+@property
+def annual(self) :
+	from axis import Axis
+	axes = Axes()
+	axes['month'] = Axis(range(1, 13))
+	for axisName in self.axes :
+		if axisName != 'time' :
+			axes[axisName] = self.axes[axisName].copy()
+	data = np.empty(axes.shape)
+	for idx, month in enumerate(monthNames) :
+		data[idx] = getattr(self, month).yearly.mean('t').data
+	return Variable(data, axes)
+setattr(Variable, 'annual', annual)
+
 
 """
 def wrap_smoother(monthNumbers) :
@@ -340,12 +383,13 @@ def wrap_smoother(monthNumbers) :
 	return smoother
 for periodName, monthNumbers in periods.iteritems() :
 	setattr(Variable, periodName, wrap_smoother(monthNumbers))
-
 """
 
 def absolute(self) :
-	return Variable(abs(self.data), 
-			self.metadata.copy(), self.axes.copy())
+	return Variable(
+			data = abs(self.data), 
+			metadata = self.metadata.copy(),
+			axes = self.axes.copy())
 setattr(Variable, 'abs', absolute)
 	
 setattr(Variable, 'quiver', graphics.quiver)
@@ -356,5 +400,6 @@ setattr(Variable, 'xyz', graphics.xyz)
 setattr(Variable, 'XYZ', graphics.XYZ)
 setattr(Variable, 'plot_trend', graphics.plot_trend)
 setattr(Variable, 'div', statistics.div)
-setattr(Variable, 'std', statistics.std)
+setattr(Variable, 'rot', statistics.rot)
+setattr(Variable, 'cycle', statistics.cycle)
 

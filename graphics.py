@@ -1,5 +1,6 @@
 
 import numpy as np
+import numpy.ma as ma
 from matplotlib.colors import Normalize
 
 def _get_basemap(self) :
@@ -13,6 +14,7 @@ def _get_basemap(self) :
 					projection = 'nplaea',
 					boundinglat = self.lats.min(),
 					lon_0 = 0,
+					resolution = 'l',
 					round = True)
 		# the South Pole ?
 		elif self.lats.min() < -85 and self.lats.max() < -10 and \
@@ -20,12 +22,14 @@ def _get_basemap(self) :
 			self._basemap = Basemap(
 					projection = 'splaea',
 					boundinglat = self.lats.max(),
-					lon_0 = 0,
+					lon_0 = 180,
+					resolution = 'l',
 					round = True)
 		else :
 			# assign to self a standard basemap
 			self._basemap = Basemap(
 					projection = 'cyl',
+					resolution = 'l',
 					llcrnrlon = self.lons.min(),
 					llcrnrlat = self.lats.min(),
 					urcrnrlon = self.lons.max(),
@@ -36,7 +40,7 @@ def _set_basemap(self, someMap) :
 	self._basemap = someMap
 
 def _get_minimap(self) :
-	if '_basemap' not in self.__dict__ :
+	if '_minimap' not in self.__dict__ :
 		import matplotlib.pyplot as plt
 		from mpl_toolkits.basemap import Basemap
 		if 'latitude' in self.metadata :
@@ -46,7 +50,7 @@ def _get_minimap(self) :
 				lats = tuple([self.metadata['latitude']]*2)
 		else :
 			print "Warning, default behaviour"
-			lats = 60, 60
+			lats = 70, 70
 			#raise NotImplementedError, 'Only longitude profiles are implemented'
 		self._minimap = Basemap(
 			projection = 'cyl',
@@ -57,9 +61,9 @@ def _get_minimap(self) :
 	return self._minimap
 def _set_minimap(self, someMap) :
 	# user may set basemap himself
-	self._basemap = someMap
+	self._minimap = someMap
 
-def draw_minimap(self, colorbar = False) :
+def draw_minimap(self, colorbar = False, step = 45) :
 	import matplotlib.gridspec as gridspec
 	import matplotlib.pyplot as plt
 	if 'latitude' in self.metadata :
@@ -68,7 +72,7 @@ def draw_minimap(self, colorbar = False) :
 		else :
 			lats = tuple([self.metadata['latitude']]*2)
 	else :
-		lats = tuple([60]*2)
+		lats = tuple([70]*2)
 	if colorbar :
 		plotGrid = gridspec.GridSpec(2, 2, hspace=0, height_ratios=[8, 1],
 				width_ratios=[20, 1])
@@ -80,7 +84,7 @@ def draw_minimap(self, colorbar = False) :
 	plt.sca(axs[1])
 	plt.xlim(self.lons[0], self.lons[-1])
 	self.minimap.drawcoastlines()
-	self.minimap.drawparallels(lats, color='red')
+	self.minimap.drawparallels(lats, color='red', labels=[1, 0, 0, 0])
 	p = plt.Polygon(
 				[(0, lats[0]),
 				(0, lats[1]),
@@ -89,7 +93,7 @@ def draw_minimap(self, colorbar = False) :
 			facecolor='red', alpha=0.5)
 	plt.gca().add_patch(p)
 	#self.minimap.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
-	self.minimap.drawmeridians(np.arange(0, 360, 45), labels=[0, 0, 0, 1])
+	self.minimap.drawmeridians(np.arange(0, 360, step), labels=[0, 0, 0, 1])
 	plt.gca().set_aspect('auto')
 	plt.sca(axs[0])
 	plt.setp(axs[0].get_xticklabels(), visible=False)
@@ -99,7 +103,7 @@ def draw_minimap(self, colorbar = False) :
 def xyz(self) :
 	x, y = self.basemap(
 			*np.meshgrid(self.lon.edges, self.lat.edges))
-	return x, y, self.data 
+	return x, y, ma.masked_invalid(self.data)
 
 def XYZ(self) :
 	from mpl_toolkits.basemap import addcyclic
@@ -112,7 +116,7 @@ def XYZ(self) :
 		x, y = self.basemap(
 			*np.meshgrid(np.array(self.lons), self.lats))
 		z = self.data
-	return x, y, z
+	return x, y, ma.masked_invalid(z)
 
 def plot(self) :
 	import matplotlib.pyplot as plt
@@ -150,7 +154,7 @@ def plot(self) :
 		#######
 		# MAP #
 		#######
-		if self.data.min() < 0 :
+		if self.data.min() < 0 and self.data.max() > 0:
 			cmap = plt.cm.seismic
 			norm = ccb() 
 		else :
@@ -172,7 +176,7 @@ def plot(self) :
 			axs = self.draw_minimap(True)
 			plt.xlim(0, len(self.lons))
 			plt.ylim(0, len(self.dts))
-			graph = plt.pcolormesh(self.data,
+			graph = plt.pcolormesh(ma.masked_invalid(self.data),
 					cmap = cmap, norm = norm)
 			plt.draw()
 			tickLabels = [tckL.get_text() 
@@ -184,6 +188,39 @@ def plot(self) :
 			plt.gca().set_yticklabels(tickLabels)
 			plt.colorbar(graph, cax=axs[2])
 			return graph
+		######################
+		# TIME-LEVEL PROFILE #
+		######################
+		if 'level' in self.axes and 'time' in self.axes :
+			graph = plt.pcolormesh(ma.masked_invalid(self.data.transpose()),
+					cmap = cmap, norm = norm)
+			plt.draw()
+			plt.xlim(0, len(self.dts))
+			plt.ylim(0, len(self.levs))
+			tickLabels = [tckL.get_text() 
+					for tckL in plt.gca().get_xticklabels()]
+			for idx, tickLabel in enumerate(tickLabels) :
+				if tickLabel != '' :
+					try :
+						tickLabels[idx] = \
+								self.dts[int(tickLabel)].isoformat()[:10]
+					except IndexError :
+						tickLabels[idx] = ''
+			plt.gca().set_xticklabels(tickLabels)
+			tickLabels = [tckL.get_text() 
+					for tckL in plt.gca().get_yticklabels()]
+			for idx, tickLabel in enumerate(tickLabels) :
+				if tickLabel != '' :
+					try :
+						tickLabels[idx] = \
+								int(self.levs[int(tickLabel)])
+					except IndexError :
+						tickLabels[idx] = ''
+			plt.gca().set_yticklabels(tickLabels)
+			if self.levs[0] < self.levs[1] :
+				plt.gca().invert_yaxis()
+			plt.colorbar(graph)
+			return graph
 		#####################
 		#  LON-LEV PROFILE  #
 		#####################
@@ -191,9 +228,9 @@ def plot(self) :
 			axs = self.draw_minimap(True)
 			x, y = np.meshgrid(self.lon.edges, self.lev.edges)
 			graph = plt.pcolormesh(
-					x, y, self.data,
+					x, y, ma.masked_invalid(self.data),
 					cmap = cmap, norm = norm)
-			plt.xlim(self.lon[0], self.lon[-1])
+			plt.xlim(self.lons[0], self.lons[-1])
 			plt.ylim(self.lev.edges[0], self.lev.edges[-1])
 			if self.levs[0] < self.levs[1] :
 				plt.gca().invert_yaxis()
@@ -205,22 +242,21 @@ def plot(self) :
 		if 'latitude' in self.axes and 'level' in self.axes :
 			x, y = np.meshgrid(self.lat.edges, self.lev.edges)
 			graph = plt.pcolormesh(
-					x, y, self.data,
+					x, y, ma.masked_invalid(self.data),
 					cmap = cmap, norm = norm)
-			plt.xlim(self.lat[0], self.lat[-1])
+			plt.xlim(self.lats[0], self.lats[-1])
 			plt.ylim(self.lev.edges[0], self.lev.edges[-1])
 			if self.levs[0] < self.levs[1] :
 				plt.gca().invert_yaxis()
 			plt.draw()
 			plt.colorbar(graph)
-
 	else :
 		raise Exception, "Variable has too many axes or none"
 
-def quiver(zonal, meridional, nx=15, ny=15, **kwargs) :
+def quiver(zonal, meridional, nx=25, ny=25, **kwargs) :
 	import matplotlib.pyplot as plt
-	zonal = zonal(lon=(-179, 179))
-	meridional = meridional(lon=(-179, 179))
+	zonal = zonal(lon=(-180, 180))
+	meridional = meridional(lon=(-180, 180))
 	zonal.basemap.drawcoastlines()
 	order = slice(None)
 	if zonal.lats[0] > zonal.lats[1] :
@@ -228,12 +264,16 @@ def quiver(zonal, meridional, nx=15, ny=15, **kwargs) :
 	if zonal.basemap.projection == 'cyl' :
 		x, y = np.meshgrid(zonal.lons, zonal.lats)
 		graph = zonal.basemap.quiver(x, y, zonal.data, meridional.data, **kwargs)
+	elif zonal.basemap.projection == 'splaea' :
+		u, v, x, y = zonal.basemap.transform_vector(
+				-zonal.data[order], -meridional.data[order], zonal.lons,
+				zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
+		graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
 	else :
 		u, v, x, y = zonal.basemap.transform_vector(
 				zonal.data[order], meridional.data[order], zonal.lons,
 				zonal.lats[order], nx, ny, 	returnxy = True, masked=True)
 		graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
-	#plt.quiverkey(graph, 0...
 	return graph
 
 def streamplot(zonal, meridional, nx=15, ny=15, **kwargs) :
@@ -307,51 +347,183 @@ class ccb(Normalize):
 	
 	def __call__(self, value, clip=None):
 		import numpy.ma as ma
-		# I'm ignoring masked values and all kinds of edge cases to make a
-		# simple example...
 		x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
-		return ma.masked_array(np.interp(value, x, y))
+		if isinstance(value, np.ma.core.MaskedArray) :
+			return ma.masked_array(np.interp(value, x, y), mask = value.mask)
+		else :
+			return ma.masked_array(np.interp(value, x, y))
 
-def plot_trend(self) :
+class mini_ccb(Normalize):
+	# makes it easier to plot significance in trend plots
+	def __init__(self, vmin=None, vmax=None, midpoint=0, clip=False):
+		self.midpoint = midpoint
+		Normalize.__init__(self, vmin, vmax, clip)
+	
+	def __call__(self, value, clip=None):
+		import numpy.ma as ma
+		x, y = [self.vmin, self.midpoint, self.vmax], [0.2, 0.5, 0.8]
+		if isinstance(value, np.ma.core.MaskedArray) :
+			return ma.masked_array(np.interp(value, x, y), mask = value.mask)
+		else :
+			return ma.masked_array(np.interp(value, x, y))
+
+def plot_trend(self, hatch = True) :
 	import matplotlib.pyplot as plt
+	######################
+	# 1D e.g time series #
+	######################
 	if len(self.slope.shape) == 0 :
+		# solid if trend is signficant
+		self.plot
 		if self.significance.data :
 			plt.plot(self.dts, self.line.data, lw=2)
+		# dashed otherwise
 		else :
 			plt.plot(self.dts, self.line.data, ls='--')
+	elif len(self.slope.shape) == 1 :
+		# may be necessary
+		#mask = ~np.isnan(self.slope.data)
+		schnouf = np.ma.array(data = self.slope.data, mask = ~self.significance.data)
+		####################
+		# VERTICAL PROFILE #
+		####################
+		if 'level' in self.axes :
+			output = plt.plot(schnouf.data, self.levs, lw = 0.5)[0]
+			color = output.get_color()
+			output = (output, 
+					plt.plot(schnouf, self.levs, lw = 1.5, color=color)[0])
+			# make sure pressures decrease with height
+			if not plt.gca().yaxis_inverted() :
+				plt.gca().invert_yaxis()
+			return output
+		#####################
+		# LONGITUDE PROFILE #
+		#####################
+		if 'longitude' in self.axes :
+			ax_0, ax_1 = self.draw_minimap()
+			output = plt.plot(self.lons,schnouf.data, lw = 0.5)[0]
+			color = output.get_color()
+			output = (output, 
+					plt.plot(self.lons, schnouf, lw = 1.5, color=color)[0])
+			plt.xlim(self.lons.min(), self.lons.max())
+			return ax_0, ax_1, output
+		####################
+		# LATITUDE PROFILE #
+		####################
+		if 'latitude' in self.axes :
+			#self.draw_minimap()
+			plt.xlim(self.lats.min(), self.lats.max())
+			return plt.plot(self.lats, self.data)
 	elif len(self.slope.shape) == 2 :
+		schnouf = np.ma.array(data = self.slope.data, mask = self.significance.data)
+		#######
+		# MAP #
+		#######
 		if 'latitude' in self.slope.axes and\
 				'longitude' in self.slope.axes :
 			self.basemap.drawcoastlines()
-			graph = self.basemap.pcolormesh(*(self.slope*self.significance).xyz(),
-					cmap=plt.cm.seismic, norm=ccb())
+			x, y = self.basemap(
+					*np.meshgrid(self.lon.edges, self.lat.edges))
+			graph = self.basemap.pcolormesh(
+					x, y, schnouf.data,
+					cmap=plt.cm.seismic, 
+					norm=mini_ccb(),
+					zorder=0.5)
+			ca = plt.gca()
 			colorBar = plt.colorbar()
+			# what is the shape of the map we must hatch ?
+			if self.basemap.projection == 'cyl' :
+				hatch = ca.fill(
+						[self.lons[0], self.lons[-1], self.lons[-1], self.lons[0]],
+						[self.lats.min(), self.lats.min(), self.lats.max(), self.lats.max()],
+						zorder = 0.75,
+						fill=False, hatch='x')
+			else :
+				# we assume it's a round nplaea/splaea
+				from matplotlib.patches import Ellipse
+				x1 = self.basemap.xmin
+				x2 = self.basemap.xmax
+				hatch = plt.gca().add_patch(
+						Ellipse(
+								((x1+x2)*0.5, (x1+x2)*0.5), x1-x2, x1-x2,
+								zorder=0.75, 
+								fill=False, hatch='x'))
+			graph = self.basemap.pcolormesh(
+					x, y, schnouf,
+					cmap=plt.cm.seismic, 
+					norm=mini_ccb(
+							vmin=schnouf.data.min(),
+							vmax=schnouf.data.max()),
+					zorder=1)
 			if 'units' in self.__dict__ :
 				colorBar.set_label(self.units + 'per year')
 			graph = self.basemap.pcolormesh(*self.slope.xyz(),
-					cmap=plt.cm.seismic, norm=ccb(), alpha=0.01)
+					cmap=plt.cm.seismic, norm=mini_ccb(), alpha=0.01)
 			#cs = self.basemap.contour(*((-1)*self.significance+0.5).XYZ(), levels=[-0.1, 0])
 			return graph, colorBar
-		if 'longitude' in self.slope.axes and\
+		###########
+		# LON-LEV #
+		###########
+		if 'longitude' in self.slope.axes and \
 				'level' in self.slope.axes :
 			axs = self.draw_minimap(True)
-			plt.xlim(0, len(self.lons))
-			plt.ylim(0, len(self.levs))
-			if self.levs[0] < self.levs[1] :
-				order = slice(None, None, -1)
-			else :
-				order = slice(None)
-			graph = plt.pcolormesh((self.slope*self.significance).data[order],
-					cmap=plt.cm.seismic, norm=ccb())
-			plt.draw()
+			x, y = np.meshgrid(self.lon.edges, self.lev.edges)
+			# all tiles
+			graph = plt.pcolormesh(
+					x, y, schnouf.data,
+					cmap=plt.cm.seismic,
+					norm=mini_ccb(),
+					zorder = 0.5)
+			ca = plt.gca()
 			plt.colorbar(graph, cax=axs[2])
-			graph = plt.pcolormesh(self.slope.data[order],
-					cmap=plt.cm.seismic, norm=ccb(), alpha=0.08)
-			tickLabels = [tckL.get_text() 
-					for tckL in plt.gca().get_yticklabels()]
-			for idx, tickLabel in enumerate(tickLabels) :
-				if tickLabel != '' :
-					tickLabels[idx] = str(
-							self.levs[int(tickLabel)])
-			plt.gca().set_yticklabels(tickLabels[order])
-
+			hatch = ca.fill(
+					[self.lons[0], self.lons[-1], self.lons[-1], self.lons[0]],
+					[self.lev.edges[0], self.lev.edges[0],
+							self.lev.edges[-1], self.lev.edges[-1]],
+					zorder = 0.75,
+					fill=False, hatch='x')
+			if not hatch :
+				plt.cla()
+			# only the significant tiles
+			plt.sca(ca)
+			graph = plt.pcolormesh(
+					x, y, schnouf,
+					zorder = 1,
+					norm=mini_ccb(),
+					cmap=plt.cm.seismic)
+			plt.xlim(self.lons[0], self.lons[-1])
+			plt.ylim(self.lev.edges[0], self.lev.edges[-1])
+			if self.levs[0] < self.levs[1] :
+				plt.gca().invert_yaxis()
+		###########
+		# LAT-LEV #
+		###########
+		if 'latitude' in self.slope.axes and \
+				'level' in self.slope.axes :
+			x, y = np.meshgrid(self.lat.edges, self.lev.edges)
+			# all tiles
+			graph = plt.pcolormesh(
+					x, y, schnouf.data,
+					cmap=plt.cm.seismic,
+					norm=mini_ccb(),
+					zorder = 0.5)
+			ca = plt.gca()
+			#plt.draw()
+			plt.colorbar(graph)
+			hatch = ca.fill(
+					[self.lats[0], self.lats[-1], self.lats[-1], self.lats[0]],
+					[self.lev.edges[0], self.lev.edges[0],
+							self.lev.edges[-1], self.lev.edges[-1]],
+					zorder = 0.75,
+					fill=False, hatch='x')
+			if not hatch :
+				plt.cla()
+			# only the significant tiles
+			graph = plt.pcolormesh(
+					x, y, schnouf,
+					zorder = 1,
+					cmap=plt.cm.seismic, norm=mini_ccb())
+			plt.xlim(self.lats[0], self.lats[-1])
+			plt.ylim(self.lev.edges[0], self.lev.edges[-1])
+			if self.levs[0] < self.levs[1] :
+				plt.gca().invert_yaxis()

@@ -231,7 +231,7 @@ class Variable(aa.Variable) :
 					# to what datetimes and pressures
 					# do the conditions correspond ? slice former axis
 					newConditions[axisName] = \
-						self.axes[axisName][item].data
+						self.axes[axisName].data[item]
 					# make sure newConditions is still iterable though
 					if not isinstance(newConditions[axisName], list) :
 						if not isinstance(newConditions[axisName], np.ndarray) :
@@ -293,7 +293,8 @@ class Variable(aa.Variable) :
 					twistedLongitudes = True
 					secondMask = mask[:]
 					mask.append(self.conditions['longitude'][0])
-					slice1 = slice(0, -mask[-1].start)
+					#slice1 = slice(0, -mask[-1].start)
+					slice1 = slice(0, mask[-1].stop - mask[-1].start)
 					secondMask.append(self.conditions['longitude'][1])
 					slice2 = slice(-secondMask[-1].stop, None)
 				else :
