@@ -23,6 +23,7 @@ A variable is composed of :
 	- a dictionray of metadata : myVariable.metadata
 
 To select a subset of your variable, you can :
+
 	- call the variable object using physical quantities e.g. dates, degrees, pressures
 		>>> t1 = aa.datetime(1970, 1, 1)
 		>>> t2 = aa.datetime(2000, 1, 1)
@@ -31,12 +32,17 @@ To select a subset of your variable, you can :
 		'co' means closed-open : it will include 1970/01/01 but exclude 2000/01/01
 		the default behaviour is 'cc' : in the example, 60°N and the North Pole will be included
 		if the selected location does not fall on a grid point, your data will be interpolated
+
 	- use the indices of the underlying data table
 		>>> subsetVariable = myVariable[10, :40]
 		assuming myVariable has time, latitude and longitude dimensions in that order
 		this will select the tenth timestep of myVariable and and the forty first latitudes
 		>>> lowResolution = myVariable[:, ::2, ::2]
 		skip every second latitude, every second longitude
+
+	- select particular months or seasons
+		>>> myVariable.DEC
+		>>> myVariable.DJF
 
 Averaging :
 	>>> meanVariable = myVariable.mean(['time', 'latitude'])
@@ -51,8 +57,21 @@ Yearly or monthly means :
 	>>> yearlyMean = myVariable.yearly
 	>>> monthlyMean = myVariable.monthly
 
+Monthly or seasonal climatology :
+	>>> myVariable.annual
+	This will return a variable with a 'month' axis instead of a 'time' axis
+	0 is january, etc
+	>>> myVariable.seasonal
+	0 is DJF, ...
+
+Operations :
+	>>> var3 = var1 + var2
+	>>> var2 = var1**0.5
+	>>> var2 = cos(var1)
+
 Plots :
 	>>> myVariable.plot
+	This will return matplotlib objects that you can modify, e.g. add labels
 	OR, with a time dimension
 	>>> myVariable.plot_trend()
 	you may also want to access myVariable.slope, myVariable.intercept, myVariable.significance
