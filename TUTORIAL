@@ -76,5 +76,6 @@ Plots :
 	>>> myVariable.plot_trend()
 	you may also want to access myVariable.slope, myVariable.intercept, myVariable.significance
 	
-
-
+Save as :
+	>>> myVariable.save('path/name.nc')
+	>>> myFile.save('path/name.nc')

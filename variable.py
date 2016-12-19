@@ -252,6 +252,25 @@ for operatorName in [
 			'__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
 	setattr(Variable, operatorName, wrap_operator(operatorName))
 
+"""
+# maybe later
+def wrap_function(functionName) :
+	def function(argument) :
+		original = getattr(np, functionName)
+		if isinstance(argument, Variable) :
+			return Variable(
+						data = original(argument.data),
+						axes = argument.axes.copy(),
+						metadata = argument.metadata.copy())
+		else :
+			return original(argument)
+	return function
+for functionName in ['log', 'cos', 'sin', 'abs'] :
+	function = wrap_function(functionName)
+	setattr(np, functionName, function)
+	#globals()[functionName] = function
+"""
+
 monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 
 		'SEP', 'OCT', 'NOV', 'DEC']
 seasonNames = ['DJF', 'MAM', 'JJA', 'SON']

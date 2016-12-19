@@ -11,10 +11,13 @@ class Axes(OrderedDict) :
 	aliases = {'latitude':'latitude', 'latitudes':'latitude',
 		'lat':'latitude', 'longitude':'longitude',
 		'XDim':'longitude', 'YDim':'latitude',
+		'g4_lat_1':'latitude', 'g4_lon_2':'longitude',
 		'longitudes':'longitude', 'lon':'longitude',
 		'level':'level', 'levels':'level', 'lev':'level',
+		'Height':'level',
 		'time':'time', 'dt':'time', 't':'time',
 		'Time':'time', 'TIME':'time',
+		'initial_time0_hours':'time',
 		'x':'longitude', 'y':'latitude', 'z':'level',
 		'level0':'level', 'PRES':'level'}
 	shortcuts = {'lats':'latitude', 'lons':'longitude',
