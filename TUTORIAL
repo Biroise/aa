@@ -1,81 +1,107 @@
 
-me@computer:~$ python
->>> from pylab import *
->>> import aa
->>> f = aa.open('file.nc')
+Hello fellow pythoneer, 
+Below are a few commands to get the hang of aa.
 
-If you made the changes suggested in INSTALL to your .bashrc, you can simply do this instead
-me@computer:~$ aa file.nc
-By convention, a 'aa.File' object will be assigne to variable 'f'
+me@computer:~$ ipython --pylab
+In [1]: import aa
+In [2]: myFile = aa.open('EXAMPLE.nc')
+GRIB files are fine too.
 
-If the file contains a single variable, either method will assign the single variable to 'f' in the form of a 'aa.Variable' object (you can deactivate this behavior in the first lines of __init__.py)
+The variables in your file are stored in a dictionary :
+In [3]: myFile.variables
+Out[3]:
+{u'down': <aa.netcdf.Variable at 0x7ff5144c8bd0>,
+ u'up': <aa.netcdf.Variable at 0x7ff5144c8c10>}
+In [4]: myVariable = f.variables['up']
+or as attributes :
+In [4]: myVariable = f.up
 
-If the file contains several variables, you can access via a dictionary attribute :
->>> f.variables
-{'var1': <...>, 'var2': <...> ; ...}
->>> myVariable = f.variables['var2']
-OR
->>> myVariable = f.var2
+A variable is organised in axes :
+In [5]: myVariable.axes
+Out[5]: Axes([('time', <aa.axis.TimeAxis object at 0x7ff5144c8b10>), ('latitude', <aa.axis.Meridian object at 0x7ff5144c8b50>), ('longitude', <aa.axis.Parallel object at 0x7ff5144c8b90>)])
+You can access them via this dictionary or as attributes or using shorthands (lat, lon, lev, dt) :
+In [6]: myVariable.lat
+Out[6]: <aa.axis.Meridian at 0x7ff5144c8b50>
 
-A variable is composed of :
-	- a list of axes : myVariable.axes
-	- a numpy array : myVariable.data
-	- a dictionray of metadata : myVariable.metadata
+The data attribute of the axis object will return the marks :
+In [7]: myVariable.latitude.data
+array([ 82.5,  67.5,  52.5,  37.5,  22.5,   7.5,  -7.5, -22.5, -37.5,
+       -52.5, -67.5, -82.5])
+or using shorthands (lats, lons, levs, dts) :
+In [8]: myVariable.dts
+Out[8]:
+array([datetime.datetime(2016, 1, 1, 0, 0),
+       datetime.datetime(2016, 1, 11, 0, 0),
+       datetime.datetime(2016, 1, 21, 0, 0),
+       datetime.datetime(2016, 1, 31, 0, 0),
+       datetime.datetime(2016, 2, 10, 0, 0),
+	...
 
-To select a subset of your variable, you can :
+To extract a time series for a given location, call the variable using the corresponding latitude and longitude :
+In [9]: grenoble = myVariable(lat = 45, lon = 43)
+This command should display the series :
+In [10]: grenoble.plot
+[<matplotlib.lines.Line2D at 0x7ff5101f6ed0>]
 
-	- call the variable object using physical quantities e.g. dates, degrees, pressures
-		>>> t1 = aa.datetime(1970, 1, 1)
-		>>> t2 = aa.datetime(2000, 1, 1)
-		>>> lat1, lat2 = 60, 90
-		>>> subsetVariable = myVariable(time = (t1, t2, 'co'), latitude = (lat1, lat2))
-		'co' means closed-open : it will include 1970/01/01 but exclude 2000/01/01
-		the default behaviour is 'cc' : in the example, 60°N and the North Pole will be included
-		if the selected location does not fall on a grid point, your data will be interpolated
+For the monthly averages :
+In [12]: top = grenoble.monthly
+And indeed :
+In [12]: up.dts
+Out[12]:
+array([datetime.datetime(2016, 1, 1, 0, 0),
+       datetime.datetime(2016, 2, 1, 0, 0),
+       datetime.datetime(2016, 3, 1, 0, 0),
+       datetime.datetime(2016, 4, 1, 0, 0),
+	...
+It works with 'yearly' too.
 
-	- use the indices of the underlying data table
-		>>> subsetVariable = myVariable[10, :40]
-		assuming myVariable has time, latitude and longitude dimensions in that order
-		this will select the tenth timestep of myVariable and and the forty first latitudes
-		>>> lowResolution = myVariable[:, ::2, ::2]
-		skip every second latitude, every second longitude
+You can extract months (JAN, FEB, ...) and seasons (DJF, ...) as in :
+In [13]: myVariable.SON.dts
+Out[13]: 
+array([datetime.datetime(2016, 9, 7, 0, 0),
+       datetime.datetime(2016, 9, 17, 0, 0),
+       datetime.datetime(2016, 9, 27, 0, 0),
+       datetime.datetime(2016, 10, 7, 0, 0),
+'.SON.yearly' will return a series with each year's mean for autumn.
+'.seasonal' and '.annual' will return climatological cycles
 
-	- select particular months or seasons
-		>>> myVariable.DEC
-		>>> myVariable.DJF
+aa is fast and simple but by no means comprehensive.
+For more complex tasks, operate on the underlying numpy arrays, e.g. :
+In [14]: aNumpyArray = myFile.down(lat = 45, lon = 43).monthly.data
+In [15]: fill_between(greUp.dts, greUp.data, aNumpyArray)
+Out[15]: <matplotlib.collections.PolyCollection at 0x7f41d1d25f90>
 
-Averaging :
-	>>> meanVariable = myVariable.mean(['time', 'latitude'])
-	OR
-	>>> meanVariable = myVariable.mean('xy')
-	a 'mean' along the vertical is actually an integration
-	you may want to supply the surface pressure to avoid including pressure underground levels :
-	>>> myVariable.metadata['surfacePressure'] = surfacePressureVariable
-	>>> myVariable.mean('z')
+These two expressions are equivalent :
+In [16]: aMap = myVariable(time = aa.datetime(2016, 1, 21, 0, 0)
+In [16]: aMap = myVariable[2]
+Indeed, 2016/01/21 is time step number 2.
+This goes with other axes and other types of slices :
+In [17]: northernHemisphere = aMap(lat = (0, 90))
+In [18]: oneLongitudeInTwo = myVariable[:, :, ::2]
 
-Yearly or monthly means :
-	>>> yearlyMean = myVariable.yearly
-	>>> monthlyMean = myVariable.monthly
+This command will build a climatology and plot it :
+In [19]: myVariable.mean('t').plot
+Out[19]: 
+(<matplotlib.collections.QuadMesh at 0x7ff50904d790>,
+ <matplotlib.colorbar.Colorbar instance at 0x7ff508fde128>)
+For the worldwide time series, use 'xy'
+'z' will perform an integration on pressure levels not an average.
+Best to supply a surface pressure variable before hand in the metadata.
 
-Monthly or seasonal climatology :
-	>>> myVariable.annual
-	This will return a variable with a 'month' axis instead of a 'time' axis
-	0 is january, etc
-	>>> myVariable.seasonal
-	0 is DJF, ...
+Speaking of which :
+In [20]: myVariable.metadata
+Out[20]: {'shortName': u'up', 'units': u'millipikku'}
+You can add your own items as in any dictionary.
 
-Operations :
-	>>> var3 = var1 + var2
-	>>> var2 = var1**0.5
-	>>> var2 = cos(var1)
+Let's finish by creating a composite variable :
+In[21]: thirdVar = myVariable + 2*myFile.down
+Proverbially :
+In[22]: thirdVar.mean('t').plot
+(<matplotlib.collections.QuadMesh at 0x7ff50904d790>,
+ <matplotlib.colorbar.Colorbar instance at 0x7ff508fde128>)
+Don't forget to save :
+In[23]: thirdVar.write('path/name.nc')
 
-Plots :
-	>>> myVariable.plot
-	This will return matplotlib objects that you can modify, e.g. add labels
-	OR, with a time dimension
-	>>> myVariable.plot_trend()
-	you may also want to access myVariable.slope, myVariable.intercept, myVariable.significance
-	
-Save as :
-	>>> myVariable.save('path/name.nc')
-	>>> myFile.save('path/name.nc')
+
+
+
