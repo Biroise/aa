@@ -16,49 +16,42 @@ returnSingleVariable = True
 
 def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVariable) :
 	"Picks the appropriate file_ subclass to model a gridded data file"
-	##################
-	# MULTIPLE FILES #
-	##################
-	if isinstance(filePath, list) :
-		from aa import multi
-		file_ = multi.File(filePath)
+	##########
+	# NETCDF #
+	##########
+	if filePath.endswith('nc') :
+		from aa import netcdf
+		file_ = netcdf.File(filePath, mode)
+	#elif filePath.endswith('grib') or filePath.endswith('grb') \
+			#or filePath.endswith('grb2') :
+	##########
+	# PICKLE #
+	##########
+	elif filePath.endswith('.p') :
+		import __builtin__
+		import cPickle as pickle
+		inFile = __builtin__.open(filePath)
+		output = pickle.load(inFile)
+		inFile.close()
+		return output
 	else :
-		##########
-		# NETCDF #
-		##########
-		if filePath.endswith('nc') :
-			from aa import netcdf
-			file_ = netcdf.File(filePath, mode)
-		#elif filePath.endswith('grib') or filePath.endswith('grb') \
-				#or filePath.endswith('grb2') :
-		##########
-		# PICKLE #
-		##########
-		elif filePath.endswith('.p') :
+	########
+	# GRIB #
+	########
+		import os
+		filePath = os.path.abspath(filePath)
+		fileName = os.path.splitext(filePath)[0]
+		picklePath = fileName + '.p'
+		indexPath = fileName + '.idx'
+		if os.path.isfile(picklePath) and os.path.isfile(indexPath) \
+				and not reopen :
 			import __builtin__
 			import cPickle as pickle
-			inFile = __builtin__.open(filePath)
-			output = pickle.load(inFile)
-			inFile.close()
-			return output
+			malossol = __builtin__.open(picklePath)
+			file_ = pickle.load(malossol)
 		else :
-		########
-		# GRIB #
-		########
-			import os
-			filePath = os.path.abspath(filePath)
-			fileName = os.path.splitext(filePath)[0]
-			picklePath = fileName + '.p'
-			indexPath = fileName + '.idx'
-			if os.path.isfile(picklePath) and os.path.isfile(indexPath) \
-					and not reopen :
-				import __builtin__
-				import cPickle as pickle
-				malossol = __builtin__.open(picklePath)
-				file_ = pickle.load(malossol)
-			else :
-				from aa import grib
-				file_ = grib.File(filePath)
+			from aa import grib
+			file_ = grib.File(filePath)
 	if returnSingleVariable and len(file_.variables) == 1 :
 		#print "WARNING : output is the only variable this file contains"
 		variable = file_.variables.values()[0]
@@ -94,7 +87,7 @@ def sin(angleInDegrees) :
 #   	                  #
 ###########################
 
-reanalyses = ['ncar', 'doe', 'jra25', 'era', 'cfsr', 'merra', 'jra55']
+reanalyses = ['ncar', 'doe', 'jra25', 'era', 'cfsr', 'merra', 'merra2', 'jra55']
 
 reanalysisNames = {
 'ncar':'NCEP NCAR R1', 
@@ -102,7 +95,8 @@ reanalysisNames = {
 'jra25':'JRA 25', 
 'era':'ERA Interim', 
 'cfsr':'NCEP CFSR',
-'merra':'MERRA', 
+'merra':'MERRA 1', 
+'merra2':'MERRA 2', 
 'jra55':'JRA 55',
 'igra':'IGRA'}
 
@@ -112,7 +106,8 @@ shortNames = {
 'jra25':'JRA 25', 
 'era':'ERA I', 
 'cfsr':'CFSR',
-'merra':'MERRA', 
+'merra':'MERRA 1', 
+'merra2':'MERRA 2', 
 'igra':'IGRA', 
 'jra55':'JRA 55'}
 
@@ -124,6 +119,7 @@ reanalysisColours = {
 'cfsr':'#66a61e',
 'merra':'#e6ab02',
 'jra55':'#a6761d',
+'merra2':'#000000',
 'igra':'#000000'}
 
 """
@@ -140,7 +136,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 
 	if variable == 'ice' :
 		if dataset == None :
-			return open('/media/AcuerdaTe/topo/ETOPO1_Ice_g_gmt4.nc')
+			return open('/media/dufour/AcuerdaTe/topo/ETOPO1_Ice_g_gmt4.nc')
 		else :
 			#return open('/home/adufour/topo/' + dataset + '_ice.nc')
 			raise Exception
@@ -175,22 +171,42 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	###############
 	# CLIMATOLOGY #
 	###############
-	if year == None and month == None :
+	if (year == '8015' or year == 8015) and month == None :
 		# covariances were only computed for the polar regions
 		if region == 'Aa' and \
 				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
-			return open('/media/AcuerdaTe/climatology/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/clim_8015/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		# CFSR fluxes are only available for the polar regions
 		if region == 'Aa' and \
 				dataset == 'cfsr' and \
 				variable in ['cu', 'cv', 'qu', 'qv'] :
-			return open('/media/AcuerdaTe/climatology/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/clim_8015/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
 				dataset in ['cfsr', 'jra55', 'merra'] and \
 				variable in ['q', 'u', 'v'] :
-			return open('/media/AcuerdaTe/climatology/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
-		return open('/media/AcuerdaTe/climatology/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/clim_8015/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+		return open('/media/dufour/AcuerdaTe/clim_8015/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+
+	###############
+	# CLIMATOLOGY #
+	###############
+	if (year == '7913' or year == 7913) and month == None :
+		# covariances were only computed for the polar regions
+		if region == 'Aa' and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
+				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
+			return open('/media/dufour/AcuerdaTe/clim_7913/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+		# CFSR fluxes are only available for the polar regions
+		if region == 'Aa' and \
+				dataset == 'cfsr' and \
+				variable in ['cu', 'cv', 'qu', 'qv'] :
+			return open('/media/dufour/AcuerdaTe/clim_7913/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+		if region == 'Aa' and \
+				dataset in ['cfsr', 'jra55', 'merra'] and \
+				variable in ['q', 'u', 'v'] :
+			return open('/media/dufour/AcuerdaTe/clim_7913/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+		return open('/media/dufour/AcuerdaTe/clim_7913/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 
 	################
 	# YEARLY MEANS #
@@ -200,17 +216,17 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		if region == 'Aa' and \
 				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
-			return open('/media/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		# CFSR fluxes are only available for the polar regions
 		if region == 'Aa' and \
 				dataset == 'cfsr' and \
 				variable in ['qu', 'qv'] :
-			return open('/media/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
 				dataset in ['cfsr', 'jra55', 'merra'] and \
 				variable in ['q', 'u', 'v'] :
-			return open('/media/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
-		return open('/media/AcuerdaTe/yearly/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+		return open('/media/dufour/AcuerdaTe/yearly/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 
 	#################
 	# MONTHLY MEANS #
@@ -219,16 +235,16 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		if region == 'Aa' and \
 				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
-			return open('/media/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
 				dataset == 'cfsr' and \
 				variable in ['qu', 'qv', 'cu', 'cv'] :
-			return open('/media/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
 				dataset in ['cfsr', 'jra55', 'merra'] and \
 				variable in ['q', 'u', 'v'] :
-			return open('/media/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
-		return open('/media/AcuerdaTe/monthly/'+dataset+'/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
+		return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
 
 	###################
 	# MOISTURE FLUXES #
@@ -254,9 +270,13 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	# STRICT EVAPORATION AND SUBLIMATION #
 	######################################
 	if variable in ['eMinus', 'ePlus'] :
-		output = open('/media/Remember/e/' + variable + '/' + dataset + '/' +
+		output = open('/media/dufour/Remember/e/' + variable + '/' + dataset + '/' +
 			str(year) + str(month).zfill(2) + '.nc')
 		return output
+
+	# useful for calls from sys.argv
+	year = int(year)
+	month = int(month)
 
 	#######
 	# ERA #
@@ -272,16 +292,9 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 			for step in ['03', '06', '09', '12', '15', '18', '21', '24', '30', '36', '42', '48'] :
 				variables2D.append(prefix+step)
 		if variable in variables2D :
-			output =  open('/media/dufour/Pomnitie/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, returnSingleVariable=returnSingleVariable)
-		if variable in ['p', 'e'] :
-			output =  open('/media/dufour/Pomnitie/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
-		if variable == 'thck' :
-			if region == 'Ar' :
-				return open('/media/dufour/Pomnitie/era/3D/thck_Ar/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
-			elif region == 'Aa' :
-				return open('/media/dufour/Pomnitie/era/3D/thck_Aa/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
-			else : 
-				raise Exception
+			output =  open('/media/dufour/AcuerdaTe/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, returnSingleVariable=returnSingleVariable)
+		if variable in ['p', 'e', 'sf'] :
+			output =  open('/media/dufour/AcuerdaTe/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 		return output
 
 	########
@@ -324,19 +337,29 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	if dataset == 'merra' :
 		# 2D variables first
 		if variable in ['omega', 'pwat', 'lu', 'lv', 'su', 'sv', 'qu', 'qv', 'e', 'p', 'sp'] :
-			output = open('/media/Remember/merra/'+variable+'/'
+			output = open('/media/dufour/Remember/merra/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 			return output
 		# 3D variables now
-		if region == 'Aa' :
-			if variable in ['q', 'u', 'v'] :
-				output = open('/media/Remember/merra/Aa/'+variable+'/'
-						+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
+		if variable in ['q', 'u', 'v'] :
+			alias = {'q':'QV', 'u':'U', 'v':'V'}[variable]
+			if region == 'Aa' :
+				if year in [2014, 2015] :
+					output = open('/media/dufour/Remember/merra/Aa/1415/'
+							+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
+					output = output.variables[alias]
+				else :
+					output = open('/media/dufour/Remember/merra/Aa/'+variable+'/'
+							+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 				output.data = output.data.filled(np.nan)
-		else :
-			if variable in ['q', 'u', 'v'] :
-				output =  open('/media/Remember/merra/Ar/'+variable+'/'
-						+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
+			else :
+				if year in [2014, 2015] :
+					output = open('/media/dufour/Remember/merra/Ar/1415/'
+							+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
+					output = output.variables[alias]
+				else :
+					output = open('/media/dufour/Remember/merra/Ar/'+variable+'/'
+							+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 				output.data = output.data.filled(np.nan)
 		return output
 
@@ -347,14 +370,14 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 		if variable in ['q', 'u', 'v', 'T'] :
 			if variable == 'T' :
 				variable = 't'
-			output = open('/media/Remember/jra25/3D/'
+			output = open('/media/dufour/Remember/jra25/3D/'
 					+str(year)+str(month).zfill(2)+'.grb', returnSingleVariable=returnSingleVariable)[variable][:, :12]
 		if variable in ['pwat', 'sp', 'e', 'qu', 'qv', 'cu', 'cv'] :
-			output = open('/media/Remember/jra25/2D/'+variable+'/'
+			output = open('/media/dufour/Remember/jra25/2D/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 		#if variable in ['pwat', 'p'] :
 		if variable in ['p'] :
-			output = open('/media/Remember/jra25/2D/'
+			output = open('/media/dufour/Remember/jra25/2D/'
 					+str(year)+str(month).zfill(2)+'.grb', returnSingleVariable=returnSingleVariable)
 			if variable == 'p' :
 				output = output['lsp'] + output['acpcp']
@@ -378,10 +401,10 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	########
 	if dataset == 'cfsr' :
 		if variable == 'e' :
-			output = open('/media/Remember/cfsr/e/'
+			output = open('/media/dufour/Remember/cfsr/e/'
 					+str(year)+str(month).zfill(2)+'.nc')
 		if variable == 'sp' :
-			output = open('/media/Remember/cfsr/sp/'
+			output = open('/media/dufour/Remember/cfsr/sp/'
 						+str(year)+str(month).zfill(2)+'.nc')
 		return output
 	
@@ -390,12 +413,44 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	##########
 	if dataset == 'jra55' :
 		from datetime import datetime
-		start = datetime(year, month, 1)
-		stop = datetime(year + (month+1)/13, month%12 +1, 1)
-		if variable in ['qv', 'qu', 'e', 'sp'] :
-				return open('/media/Remember/jra55/'+variable
-						+'/'+str(year)+'.grb')(time=(start, stop, 'co'))
+		if year in [2014, 2015] :
+			ending = {'qv':'nc', 'qu':'grb', 'p':'grb', 'e':'grb', 'sp':'grb', 'pwat':'grb'}
+			output = open('/media/dufour/Remember/jra55/'+variable
+					+'/'+str(year)+str(month).zfill(2) + '.' + ending[variable]
+					)
+			if variable == 'qv' :
+				output = output.variables['VWV_GDS4_EATM']
+			return output
+  
+		else :
+			start = datetime(year, month, 1)
+			stop = datetime(year + (month+1)/13, month%12 +1, 1)
+			#if variable in ['qv', 'qu', 'e', 'sp'] :
+			return open('/media/dufour/Remember/jra55/'+variable
+							+'/'+str(year)+'.grb')(time=(start, stop, 'co'))
+
+	###########
+	# MERRA 2 #
+	###########
+	if dataset == 'merra2' :
+		# 2D variables first
+		if variable in ['prectotcorr', 'omega', 'pwat', 'lu', 'lv', 'su', 'sv', 'qu', 'qv', 'e', 'p', 'sp'] :
+			output = open('/home/dufour/AcuerdaTe/merra2/'+variable+'/'
+					+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
+			return output
+		# 3D variables now
+		variableName = {'q':'QV', 'u':'U', 'v':'V'}
+		if region == 'Aa' :
+			if variable in ['q', 'u', 'v'] :
+				output = open('/media/dufour/Remember/merra2/Aa/'
+						+str(year)+str(month).zfill(2)+'.nc').variables[variableName[variable]]
+				output.data = output.data.filled(np.nan)
+		else :
+			if variable in ['q', 'u', 'v'] :
+				output =  open('/media/dufour/Remember/merra2/Ar/'
+						+str(year)+str(month).zfill(2)+'.nc').variables[variableName[variable]]
+				output.data = output.data.filled(np.nan)
+		return output
 
 	raise Exception
-
 
