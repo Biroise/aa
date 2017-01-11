@@ -16,7 +16,7 @@ To run aatk (the arctic-antarctic toolkit), you will need
 	- these pip packages :
 		netcdf4
 			you may need the following flags
-			pip install --user --global-option=built_ext --global-option="-L/usr/include/hdf5/serial"
+			pip install --user --global-option=build_ext --global-option="-L/usr/include/hdf5/serial"
 		ecwmwf-api-client
 			recommended if you want to download from the ECMWF servers
 
