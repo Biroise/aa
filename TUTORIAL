@@ -12,9 +12,9 @@ In [3]: myFile.variables
 Out[3]:
 {u'down': <aa.netcdf.Variable at 0x7ff5144c8bd0>,
  u'up': <aa.netcdf.Variable at 0x7ff5144c8c10>}
-In [4]: myVariable = f.variables['up']
+In [4]: myVariable = myFile.variables['up']
 or as attributes :
-In [4]: myVariable = f.up
+In [4]: myVariable = myFile.up
 
 A variable is organised in axes :
 In [5]: myVariable.axes
@@ -42,6 +42,7 @@ In [9]: grenoble = myVariable(lat = 45, lon = 43)
 This command should display the series :
 In [10]: grenoble.plot
 [<matplotlib.lines.Line2D at 0x7ff5101f6ed0>]
+(If you are using python from a script, an interpreter or a notebook rather than pylab, you must add these two lines : "from pylab import *" and "show()" to display the graph)
 
 For the monthly averages :
 In [12]: top = grenoble.monthly
