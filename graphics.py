@@ -135,29 +135,33 @@ def plot(self) :
 		# TIME SERIES #
 		###############
 		if 'time' in self.axes :
-			return plt.plot(self.dts, self.data)
+			mask = ~np.isnan(self.data)
+			return plt.plot(self.dts[mask], self.data[mask])
 		#####################
 		# LONGITUDE PROFILE #
 		#####################
 		if 'longitude' in self.axes :
+			mask = ~np.isnan(self.data)
 			ax_0, ax_1 = self.draw_minimap()
 			plt.xlim(self.lons.min(), self.lons.max())
-			return ax_0, ax_1, plt.plot(self.lons, self.data)
+			return ax_0, ax_1, plt.plot(self.lons[mask], self.data[mask])
 		####################
 		# LATITUDE PROFILE #
 		####################
 		if 'latitude' in self.axes :
 			#self.draw_minimap()
+			mask = ~np.isnan(self.data)
 			plt.xlim(self.lats.min(), self.lats.max())
-			return plt.plot(self.lats, self.data)
+			return plt.plot(self.lats[mask], self.data[mask])
 	elif len(self.axes) == 2 :
 		#######
 		# MAP #
 		#######
-		if self.data.min() < 0 and self.data.max() > 0:
+		if np.nanmin(self.data) < 0 and np.nanmax(self.data) > 0:
 			cmap = plt.cm.seismic
 			norm = ccb() 
 		else :
+			#cmap = plt.cm.hot_r
 			cmap = None
 			norm = None
 		if 'latitude' in self.axes and \

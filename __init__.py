@@ -98,6 +98,7 @@ reanalysisNames = {
 'merra':'MERRA 1', 
 'merra2':'MERRA 2', 
 'jra55':'JRA 55',
+'series':'IGRA',
 'igra':'IGRA'}
 
 shortNames = {
@@ -112,6 +113,26 @@ shortNames = {
 'jra55':'JRA 55'}
 
 reanalysisColours = {
+'doe':'#1f78b4',
+'era':'#33a02c',
+'cfsr':'#e31a1c',
+'jra55':'#ff7f00',
+'series':'#000000',
+'merra2':'#6a3d9a'}
+
+
+"""
+reanalysisColours = {
+'doe':'#1b9e77',
+'era':'#d95f02',
+'cfsr':'#7570b3',
+'jra55':'#e7298a',
+'series':'#000000',
+'merra2':'#66a61e'}
+"""
+
+"""
+reanalysisColours = {
 'ncar':'#1b9e77',
 'doe':'#d95f02',
 'jra25':'#7570b3',
@@ -121,6 +142,7 @@ reanalysisColours = {
 'jra55':'#a6761d',
 'merra2':'#000000',
 'igra':'#000000'}
+"""
 
 """
 # ggplot2 style colours
@@ -171,22 +193,22 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	###############
 	# CLIMATOLOGY #
 	###############
-	if (year == '8015' or year == 8015) and month == None :
+	if (year == '8016' or year == 8016) and month == None :
 		# covariances were only computed for the polar regions
 		if region == 'Aa' and \
-				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55', 'merra2'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
-			return open('/media/dufour/AcuerdaTe/clim_8015/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/clim_8016/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		# CFSR fluxes are only available for the polar regions
 		if region == 'Aa' and \
 				dataset == 'cfsr' and \
 				variable in ['cu', 'cv', 'qu', 'qv'] :
-			return open('/media/dufour/AcuerdaTe/clim_8015/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/clim_8016/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
-				dataset in ['cfsr', 'jra55', 'merra'] and \
+				dataset in ['cfsr', 'jra55', 'merra', 'merra2'] and \
 				variable in ['q', 'u', 'v'] :
-			return open('/media/dufour/AcuerdaTe/clim_8015/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
-		return open('/media/dufour/AcuerdaTe/clim_8015/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+			return open('/media/dufour/AcuerdaTe/clim_8016/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
+		return open('/media/dufour/AcuerdaTe/clim_8016/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 
 	###############
 	# CLIMATOLOGY #
@@ -194,7 +216,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	if (year == '7913' or year == 7913) and month == None :
 		# covariances were only computed for the polar regions
 		if region == 'Aa' and \
-				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55', 'merra2'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
 			return open('/media/dufour/AcuerdaTe/clim_7913/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		# CFSR fluxes are only available for the polar regions
@@ -203,7 +225,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 				variable in ['cu', 'cv', 'qu', 'qv'] :
 			return open('/media/dufour/AcuerdaTe/clim_7913/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
-				dataset in ['cfsr', 'jra55', 'merra'] and \
+				dataset in ['cfsr', 'jra55', 'merra', 'merra2'] and \
 				variable in ['q', 'u', 'v'] :
 			return open('/media/dufour/AcuerdaTe/clim_7913/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		return open('/media/dufour/AcuerdaTe/clim_7913/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
@@ -214,7 +236,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	if year == 'yearly' and month == None :
 		# covariances were only computed for the polar regions
 		if region == 'Aa' and \
-				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55', 'merra2'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
 			return open('/media/dufour/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		# CFSR fluxes are only available for the polar regions
@@ -223,7 +245,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 				variable in ['qu', 'qv'] :
 			return open('/media/dufour/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
-				dataset in ['cfsr', 'jra55', 'merra'] and \
+				dataset in ['cfsr', 'jra55', 'merra', 'merra2'] and \
 				variable in ['q', 'u', 'v'] :
 			return open('/media/dufour/AcuerdaTe/yearly/Aa/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
 		return open('/media/dufour/AcuerdaTe/yearly/'+variable+'_'+dataset+'.nc', returnSingleVariable=returnSingleVariable)
@@ -233,7 +255,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	#################
 	if year == 'monthly' and month == None :
 		if region == 'Aa' and \
-				dataset in ['merra', 'era', 'cfsr', 'jra55'] and \
+				dataset in ['merra', 'era', 'cfsr', 'jra55', 'merra2'] and \
 				variable in ['qu_pl', 'qv_pl', 'qut', 'qvt', 'QU', 'QV', 'QUT', 'QVT'] :
 			return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
@@ -241,7 +263,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 				variable in ['qu', 'qv', 'cu', 'cv'] :
 			return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
 		if region == 'Aa' and \
-				dataset in ['cfsr', 'jra55', 'merra'] and \
+				dataset in ['cfsr', 'jra55', 'merra', 'merra2'] and \
 				variable in ['q', 'u', 'v'] :
 			return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/Aa/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
 		return open('/media/dufour/AcuerdaTe/monthly/'+dataset+'/'+variable+'.nc', returnSingleVariable=returnSingleVariable)
@@ -287,26 +309,30 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 			# open will return the variable since the file is otherwise empty
 			#output.levs /= 100
 			#output.lev.units = 'hPa'
-		variables2D = ['omega', 'eu', 'ev', 'mu', 'mv', 'mslp', 'lDiv', 'sDiv', 'mDiv', 'su', 'lu', 'sv', 'lv', 'sp', 'div', 'qu', 'qv', 'tcw', 'pwat']
+		variables2D = ['icec', 'eu', 'ev', 'mu', 'mv', 'slp', 'lDiv', 'sDiv', 'mDiv', 'su', 'lu', 'sv', 'lv', 'sp', 'div', 'qu', 'qv', 'tcw', 'pwat', 'T2m', 'skiT', 'pT2PVU', 'gphu', 'gphv', 'Tu', 'Tv', 'ec_u', 'ec_v']
 		for prefix in ['tcw', 'e', 'p', 'pwat'] :
 			for step in ['03', '06', '09', '12', '15', '18', '21', '24', '30', '36', '42', '48'] :
 				variables2D.append(prefix+step)
 		if variable in variables2D :
 			output =  open('/media/dufour/AcuerdaTe/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.grb', reopen=reopen, returnSingleVariable=returnSingleVariable)
-		if variable in ['p', 'e', 'sf'] :
+		if variable in ['p', 'e', 'sf', 'cape', 'gph_500', 'gph_700'] :
 			output =  open('/media/dufour/AcuerdaTe/era/2D/'+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
+		if region == 'Aa' :
+			output = output(lat = (-90, -60))
+		if region == 'Ar' :
+			output = output(lat = (60, 90))
 		return output
 
 	########
 	# NCAR #
 	########
 	if dataset == 'ncar' :
-		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck', 'omega'] :
+		if variable in ['gph', 'u', 'v', 'q', 'T', 'rh', 'thck', 'omega'] :
 			output = open('/media/dufour/SouviensToi/ncar/3D/'
-					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)[:, :8]
-			if variable == 'omega' :
-				output = output[:, 7]
-		if variable in ['skiT', 'lh', 'e', 'p', 'sp', 'pwat', 'qu', 'qv', 'slp'] :
+					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)#[:, :8]
+			#if variable == 'omega' :
+				#output = output[:, 7]
+		if variable in ['icec', 'Tsig995', 'skiT', 'lh', 'e', 'p', 'sp', 'pwat', 'qu', 'qv', 'slp'] :
 			output = open('/media/dufour/SouviensToi/ncar/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 		if output.dts[0].day != 1 :
@@ -318,16 +344,20 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	# DOE #
 	#######
 	if dataset == 'doe' :
-		if variable in ['u', 'v', 'q', 'T', 'rh', 'thck', 'omega'] :
+		if variable in ['gph', 'u', 'v', 'q', 'T', 'rh', 'thck', 'omega'] :
 			output = open('/media/dufour/SouviensToi/doe/3D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
-			if variable == 'omega' :
-				output = output[:, -1]
-		if variable in ['skiT', 'lh', 'e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
+			#if variable == 'omega' :
+				#output = output[:, -1]
+		if variable in ['slp', 'skiT', 'lh', 'e', 'p', 'sp', 'pwat', 'qu', 'qv'] :
 			output = open('/media/dufour/SouviensToi/doe/2D/'
 					+variable+'/'+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 		if variable == 'p' :
 			output = output['prate']
+		if region == 'Aa' :
+			output = output(lat = (-90, -60))
+		if region == 'Ar' :
+			output = output(lat = (60, 90))
 		return output
 
 
@@ -400,12 +430,34 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	# CFSR #
 	########
 	if dataset == 'cfsr' :
-		if variable == 'e' :
-			output = open('/media/dufour/Remember/cfsr/e/'
-					+str(year)+str(month).zfill(2)+'.nc')
 		if variable == 'sp' :
-			output = open('/media/dufour/Remember/cfsr/sp/'
+			if year in [2011, 2012, 2013] :
+				ending = 'nc'
+			else :
+				ending = 'grb'
+			output = open('/media/dufour/SouviensToi/cfsr/' + variable + '/'
+						+str(year)+str(month).zfill(2) + '.' + ending)
+		if variable in ['pwat', 'p'] :
+			output = open('/media/dufour/SouviensToi/cfsr/' + variable + '/'
+						+str(year)+str(month).zfill(2)+'.grb')
+		if variable in ['e'] :
+			output = open('/media/dufour/SouviensToi/cfsr/' + variable + '/'
 						+str(year)+str(month).zfill(2)+'.nc')
+		if variable in ['qu', 'qv'] :
+			if region == 'Aa' :
+				output = open('/media/dufour/SouviensToi/cfsr/Aa/' + variable + '/'
+						+str(year)+str(month).zfill(2)+'.nc')
+			else :
+				output = open('/media/dufour/SouviensToi/cfsr/NH/' + variable + '/'
+						+str(year)+str(month).zfill(2)+'.nc')
+		if variable in ['q', 'u', 'v', 'T', 'gph'] :
+			if region == 'Aa' :
+				output = open('/media/dufour/SouviensToi/cfsr/'
+						+ region + '/' + variable + '/'
+						+ str(year)+str(month).zfill(2)+'.grb')
+			else :
+				output = open('/media/dufour/SouviensToi/cfsr/Ar/' + variable + '/'
+							+str(year)+str(month).zfill(2)+'.grb')
 		return output
 	
 	##########
@@ -413,12 +465,18 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	##########
 	if dataset == 'jra55' :
 		from datetime import datetime
-		if year in [2014, 2015] :
-			ending = {'qv':'nc', 'qu':'grb', 'p':'grb', 'e':'grb', 'sp':'grb', 'pwat':'grb'}
-			output = open('/media/dufour/Remember/jra55/'+variable
-					+'/'+str(year)+str(month).zfill(2) + '.' + ending[variable]
+		if variable in ['p', 'e'] :
+			return open('/media/dufour/SouviensToi/jra55/'+variable
+					+'/'+str(year)+str(month).zfill(2)+'.nc')
+		elif year in [2014, 2015, 2016] :
+			if variable == 'qv' and year in [2014, 2015] 	:
+				ending = 'nc'
+			else :
+				ending = 'grb'
+			output = open('/media/dufour/SouviensToi/jra55/'+variable
+					+'/'+str(year)+str(month).zfill(2) + '.' + ending
 					)
-			if variable == 'qv' :
+			if variable == 'qv' and year in [2014, 2015] :
 				output = output.variables['VWV_GDS4_EATM']
 			return output
   
@@ -426,7 +484,7 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 			start = datetime(year, month, 1)
 			stop = datetime(year + (month+1)/13, month%12 +1, 1)
 			#if variable in ['qv', 'qu', 'e', 'sp'] :
-			return open('/media/dufour/Remember/jra55/'+variable
+			return open('/media/dufour/SouviensToi/jra55/'+variable
 							+'/'+str(year)+'.grb')(time=(start, stop, 'co'))
 
 	###########
@@ -434,8 +492,8 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 	###########
 	if dataset == 'merra2' :
 		# 2D variables first
-		if variable in ['prectotcorr', 'omega', 'pwat', 'lu', 'lv', 'su', 'sv', 'qu', 'qv', 'e', 'p', 'sp'] :
-			output = open('/home/dufour/AcuerdaTe/merra2/'+variable+'/'
+		if variable in ['prectotcorr', 'omega', 'pwat', 'lu', 'lv', 'su', 'sv', 'qu', 'qv', 'e', 'p', 'sp', 'enthalpy_u', 'enthalpy_v', 'pe_u', 'pe_v'] :
+			output = open('/home/dufour/SouviensToi/merra2/'+variable+'/'
 					+str(year)+str(month).zfill(2)+'.nc', returnSingleVariable=returnSingleVariable)
 			return output
 		# 3D variables now
@@ -450,6 +508,9 @@ def load(variable, dataset=None, year=None, month=None, region=None, reopen=Fals
 				output =  open('/media/dufour/Remember/merra2/Ar/'
 						+str(year)+str(month).zfill(2)+'.nc').variables[variableName[variable]]
 				output.data = output.data.filled(np.nan)
+			else :
+				output =  open('/media/dufour/SouviensToi/merra2/Ar/' + variable + 
+						'/' + str(year)+str(month).zfill(2)+'.nc')
 		return output
 
 	raise Exception

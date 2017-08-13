@@ -61,7 +61,7 @@ class Variable(object) :
 		for axisName, condition in kwargs.iteritems() :
 			# did we ask for a single value for an axis
 			# yet still have this axis in the output variable ?
-			# this signifies extract_data returned the neighbouring points
+			# this means extract_data returned the neighbouring points
 			# because this single value is not on the grid
 			if type(condition) != tuple and axisName in output.axes :
 				output.data # kludge for grib files
@@ -231,6 +231,7 @@ class Variable(object) :
 	line = property(statistics.line)
 	ante = property(statistics.ante)
 	post = property(statistics.post)
+	eof1 = property(statistics.eof1)
 	
 # allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
@@ -280,9 +281,13 @@ periods['DJF'] = [12, 1, 2]
 periods['MAM'] = [3, 4, 5]
 periods['JJA'] = [6, 7, 8]
 periods['SON'] = [9, 10, 11]
+periods['OND'] = [10, 11, 12]
 periods['JFMA'] = [1, 2, 3, 4]
 periods['JASO'] = [7, 8, 9, 10]
-periods['NDJFM'] = [11, 12, 1, 2, 3]
+periods['ONDJFM'] = [10, 11, 12, 1, 2, 3]
+periods['ONDJF'] = [10, 11, 12, 1, 2]
+periods['JFM'] = [1, 2, 3]
+periods['JAS'] = [7, 8, 9]
 
 def wrap_extractor(monthNumbers) :
 	@property

@@ -91,12 +91,18 @@ def post(self) :
 def line(self) :
 	X = np.array([(dt - self.dts[0]).total_seconds()/(3600*24*365.25*10) 
 			for dt in self.dts])
-	spatialize = [slice(None)] + [None]*len(self.slope.shape)
-	temporalize = [None] + [slice(None)]*len(self.slope.shape)
-	output = self.empty()
-	output.data = self.slope.data[temporalize]*\
-					(X - X.mean())[spatialize] \
-			+ self.data.mean(0)[temporalize]
+	if len(self.slope.shape) == 0 :
+		output = self.empty()
+		output.data = self.slope.data*\
+						(X - X.mean()) \
+				+ self.data.mean(0)
+	else :
+		spatialize = [slice(None)] + [None]*len(self.slope.shape)
+		temporalize = [None] + [slice(None)]*len(self.slope.shape)
+		output = self.empty()
+		output.data = self.slope.data[temporalize]*\
+						(X - X.mean())[spatialize] \
+				+ self.data.mean(0)[temporalize]
 	return output
 
 def sp2thck(self) :
@@ -198,4 +204,21 @@ def grad(variable) :
 		output[0].data[..., -1, :] =  output[0].data[..., -2, :]
 		output[1].data[..., -1, :] =  output[1].data[..., -2, :]
 	return output
+
+def eof1(self) :
+	if '_eof1' not in self.__dict__ :
+		self._eof1 = eof(self)
+	return self._eof1
+
+def eof(variable) :
+	from eofs.standard import Eof
+	wgts = np.cos(variable.lats*np.pi/180)**0.5
+	solver = Eof(variable.data, weights = wgts[:, None])
+	eof1 = solver.eofs(eofscaling=2, neofs=1)
+	print solver.varianceFraction(neigs=1)[0]*100, '%'
+	output = variable[0].empty()
+	output.data = eof1[0]
+	return output
+
+	
 

@@ -138,18 +138,34 @@ class Axis(object) :
 			if notMatched :
 				newCondition = (condition - self.step, \
 							condition + self.step, 'cc')
-				return self(newCondition)
+				slice_, axis = self(newCondition)
+				# clause to catch likely bug if position very close to gridpoint
+				# slice_ could be actually be a tuple of slices (in case of longitudes)
+				if type(slice_) == slice : 
+					if slice_.stop - slice_.start == 1 :
+						if abs(self.data[slice_.start] - condition) < 0.05*self.step :
+							return slice_.start, None
+						# BUG : may return a single point if it is just outside the bounds
+						else :
+							print 'conditions out of bound'
+							raise Exception
+							
+				return slice_, axis
 			else :
 				return index, None
 				# don't add this axis to newAxes
 	
 	def process_call(self, minValue, maxValue, minType, maxType) :
-		mask = np.logical_and(
-				minType(self.data - minValue,
+		lower_mask = minType(self.data - minValue,
 						# adapt 0 to axis unit : number / timedelta(0)
-						type(self.data[0] - minValue)(0)),
-				maxType(self.data - minValue,
-						maxValue - minValue))
+						type(self.data[0] - minValue)(0))
+		upper_mask = maxType(self.data - minValue,
+						maxValue - minValue)
+		mask = np.logical_and(lower_mask, upper_mask)
+		#case where both conditions are out of bounds
+		if not lower_mask.any() or not upper_mask.any() :
+			print 'conditions out of bound'
+			raise Exception
 		# now extract the sub-axis corresponding to the condition
 		return (slice(np.argmax(mask),
 						len(mask) - np.argmax(mask[::-1])),
