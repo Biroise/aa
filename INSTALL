@@ -7,6 +7,7 @@ To run aatk (the arctic-antarctic toolkit), you will need
 		git
 		python-numpy
 		python-matplotlib
+			OR python-mpltoolkits.basemap depending on your distribution
 		python-basemap
 		python-grib
 		python-pip
