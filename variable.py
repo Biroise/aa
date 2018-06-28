@@ -224,7 +224,7 @@ class Variable(object) :
 	
 	basemap = property(graphics._get_basemap, graphics._set_basemap)
 	minimap = property(graphics._get_minimap, graphics._set_minimap)
-	plot = property(graphics.plot)
+	#plot = property(graphics.plot)
 	trend = property(statistics.trend)
 	slope = property(statistics.slope)
 	significance = property(statistics.significance)
@@ -423,7 +423,9 @@ setattr(Variable, 'taylor', graphics.taylor)
 setattr(Variable, 'xyz', graphics.xyz)
 setattr(Variable, 'XYZ', graphics.XYZ)
 setattr(Variable, 'plot_trend', graphics.plot_trend)
+setattr(Variable, 'plot', graphics.plot)
 setattr(Variable, 'div', statistics.div)
 setattr(Variable, 'rot', statistics.rot)
 setattr(Variable, 'cycle', statistics.cycle)
+setattr(Variable, 'smooth', statistics.smooth)
 

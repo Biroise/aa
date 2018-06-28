@@ -8,8 +8,8 @@ def _get_basemap(self) :
 		import matplotlib.pyplot as plt
 		from mpl_toolkits.basemap import Basemap
 		# Are we mapping the North Pole ?
-		if self.lats.max() > 85 and self.lats.min() > 10 and \
-				self.lons.max() - self.lons.min() > 355 :
+		if self.lats.max() > 85 and self.lats.min() > 0 and \
+				self.lons.max() - self.lons.min() + self.lon.step > 355 :
 			self._basemap = Basemap(
 					projection = 'nplaea',
 					boundinglat = self.lats.min(),
@@ -17,7 +17,7 @@ def _get_basemap(self) :
 					resolution = 'l',
 					round = True)
 		# the South Pole ?
-		elif self.lats.min() < -85 and self.lats.max() < -10 and \
+		elif self.lats.min() < -85 and self.lats.max() < 0 and \
 				self.lons.max() - self.lons.min() > 355 :
 			self._basemap = Basemap(
 					projection = 'splaea',
@@ -48,22 +48,29 @@ def _get_minimap(self) :
 				lats = self.metadata['latitude']
 			else :
 				lats = tuple([self.metadata['latitude']]*2)
-		else :
-			print "Warning, default behaviour"
-			lats = 70, 70
-			#raise NotImplementedError, 'Only longitude profiles are implemented'
-		self._minimap = Basemap(
-			projection = 'cyl',
-			llcrnrlon = self.lons[0],
-			llcrnrlat = max(lats[0] - 10, -90),
-			urcrnrlon = self.lons[-1],
-			urcrnrlat = min(lats[1] + 10, 90))
+			self._minimap = Basemap(
+				projection = 'cyl',
+				llcrnrlon = self.lons[0],
+				llcrnrlat = max(lats[0] - 10, -90),
+				urcrnrlon = self.lons[-1],
+				urcrnrlat = min(lats[1] + 10, 90))
+		elif 'longitude' in self.metadata :
+			if isinstance(self.metadata['longitude'], tuple) :
+				lons = self.metadata['longitude']
+			else :
+				lons = tuple([self.metadata['longitude']]*2)
+			self._minimap = Basemap(
+				projection = 'cyl',
+				llcrnrlon = lons[0]-30,
+				llcrnrlat = min(self.lats[0], self.lats[-1]),
+				urcrnrlon = lons[-1]+30,
+				urcrnrlat = max(self.lats[0], self.lats[-1]))
 	return self._minimap
 def _set_minimap(self, someMap) :
 	# user may set basemap himself
 	self._minimap = someMap
 
-def draw_minimap(self, colorbar = False, step = 45) :
+def draw_minimap(self, colorbar = False) :
 	import matplotlib.gridspec as gridspec
 	import matplotlib.pyplot as plt
 	if 'latitude' in self.metadata :
@@ -71,33 +78,65 @@ def draw_minimap(self, colorbar = False, step = 45) :
 			lats = self.metadata['latitude']
 		else :
 			lats = tuple([self.metadata['latitude']]*2)
-	else :
-		lats = tuple([70]*2)
-	if colorbar :
-		plotGrid = gridspec.GridSpec(2, 2, hspace=0, height_ratios=[8, 1],
-				width_ratios=[20, 1])
-		axs = [plt.subplot(plotGrid[0, 0]), plt.subplot(plotGrid[1, 0]),
-				plt.subplot(plotGrid[0, 1])]
-	else :
-		plotGrid = gridspec.GridSpec(2, 1, hspace=0, height_ratios=[6, 1])
-		axs = [plt.subplot(plotGrid[0]), plt.subplot(plotGrid[1])]
-	plt.sca(axs[1])
-	plt.xlim(self.lons[0], self.lons[-1])
-	self.minimap.drawcoastlines()
-	self.minimap.drawparallels(lats, color='red', labels=[1, 0, 0, 0])
-	p = plt.Polygon(
-				[(0, lats[0]),
-				(0, lats[1]),
-				(360, lats[1]),
-				(360, lats[0])],
-			facecolor='red', alpha=0.5)
-	plt.gca().add_patch(p)
-	#self.minimap.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
-	self.minimap.drawmeridians(np.arange(0, 360, step), labels=[0, 0, 0, 1])
-	plt.gca().set_aspect('auto')
-	plt.sca(axs[0])
-	plt.setp(axs[0].get_xticklabels(), visible=False)
-	plt.setp(axs[0].get_xticklines(), visible=False)
+		if colorbar :
+			plotGrid = gridspec.GridSpec(2, 2, hspace=0, height_ratios=[8, 1],
+					width_ratios=[20, 1])
+			axs = [plt.subplot(plotGrid[0, 0]), plt.subplot(plotGrid[1, 0]),
+					plt.subplot(plotGrid[0, 1])]
+		else :
+			plotGrid = gridspec.GridSpec(2, 1, hspace=0, height_ratios=[6, 1])
+			axs = [plt.subplot(plotGrid[0]), plt.subplot(plotGrid[1])]
+		plt.sca(axs[1])
+		plt.xlim(self.lons[0], self.lons[-1])
+		self.minimap.drawcoastlines()
+		self.minimap.drawparallels(lats, color='red', labels=[1, 0, 0, 0])
+		p = plt.Polygon(
+					[(0, lats[0]),
+					(0, lats[1]),
+					(360, lats[1]),
+					(360, lats[0])],
+				facecolor='red', alpha=0.5)
+		plt.gca().add_patch(p)
+		#self.minimap.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
+		self.minimap.drawmeridians(np.arange(0, 360, 45), labels=[0, 0, 0, 1])
+		plt.gca().set_aspect('auto')
+		plt.sca(axs[0])
+		plt.setp(axs[0].get_xticklabels(), visible=False)
+		plt.setp(axs[0].get_xticklines(), visible=False)
+	if 'longitude' in self.metadata :
+		if isinstance(self.metadata['longitude'], tuple) :
+			lons = self.metadata['longitude']
+		else :
+			lons = tuple([self.metadata['longitude']]*2)
+		if colorbar :
+			plotGrid = gridspec.GridSpec(1, 4, wspace=0, width_ratios=[3, 17, 0.5, 1])
+			axs = [plt.subplot(plotGrid[1]), plt.subplot(plotGrid[0]),
+					plt.subplot(plotGrid[3])]
+		else :
+			plotGrid = gridspec.GridSpec(1, 2, wspace=0, width_ratios=[3, 18])
+			axs = [plt.subplot(plotGrid[1]), plt.subplot(plotGrid[0])]
+		plt.sca(axs[1])
+		if self.lats[0] < self.lats[1] :
+			order = slice(None, None, 1)
+		else :
+			order = slice(None, None, -1)
+		#plt.ylim(self.lats[order][0], self.lats[order][-1])
+		self.minimap.drawcoastlines()
+		self.minimap.drawmeridians(lons, color='red', labels=[1, 0, 0, 0])
+		p = plt.Polygon(
+					[(lons[0], self.lats[order][0]),
+					(lons[0], self.lats[order][1]),
+					(lons[1], self.lats[order][1]),
+					(lons[1], self.lats[order][0])],
+				facecolor='red', alpha=0.5)
+		plt.gca().add_patch(p)
+		#self.minimap.drawmeridians(np.arange(0, 360, 30), labels=[0, 0, 0, 1])
+		self.minimap.drawparallels(np.arange(-90, 90+15, 15), labels=[1, 0, 0, 0])
+		plt.gca().set_aspect('auto')
+		plt.sca(axs[0])
+		plt.setp(axs[0].get_yticklabels(), visible=False)
+		plt.setp(axs[0].get_yticklines(), visible=False)
+
 	return axs
 
 def xyz(self) :
@@ -118,7 +157,7 @@ def XYZ(self) :
 		z = self.data
 	return x, y, ma.masked_invalid(z)
 
-def plot(self) :
+def plot(self, *args, **kwargs) :
 	import matplotlib.pyplot as plt
 	if len(self.axes) == 1 :
 		####################
@@ -126,7 +165,7 @@ def plot(self) :
 		####################
 		if 'level' in self.axes :
 			mask = ~np.isnan(self.data)
-			output = plt.plot(self.data[mask], self.levs[mask])
+			output = plt.plot(self.data[mask], self.levs[mask], *args, **kwargs)
 			# make sure pressures decrease with height
 			if not plt.gca().yaxis_inverted() :
 				plt.gca().invert_yaxis()
@@ -136,7 +175,19 @@ def plot(self) :
 		###############
 		if 'time' in self.axes :
 			mask = ~np.isnan(self.data)
-			return plt.plot(self.dts[mask], self.data[mask])
+			return plt.plot(self.dts[mask], self.data[mask], *args, **kwargs)
+		################
+		# ANNUAL CYCLE #
+		################
+		if 'month' in self.axes :
+			#assert self.axes['month'].data[0] == 1
+			data = list(self.data)
+			data = [data[-1]] + data + [data[0]]
+			mask = ~np.isnan(data)
+			plt.gca().set_xticks(np.arange(1, 13))
+			plt.gca().set_xticklabels(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'])
+			plt.xlim(0, 13)
+			return plt.plot(np.arange(0, 14)[mask], np.array(data)[mask], *args, **kwargs)
 		#####################
 		# LONGITUDE PROFILE #
 		#####################
@@ -144,15 +195,16 @@ def plot(self) :
 			mask = ~np.isnan(self.data)
 			ax_0, ax_1 = self.draw_minimap()
 			plt.xlim(self.lons.min(), self.lons.max())
-			return ax_0, ax_1, plt.plot(self.lons[mask], self.data[mask])
+			return ax_0, ax_1, plt.plot(self.lons[mask], self.data[mask], *args, **kwargs)
 		####################
 		# LATITUDE PROFILE #
 		####################
 		if 'latitude' in self.axes :
 			#self.draw_minimap()
 			mask = ~np.isnan(self.data)
-			plt.xlim(self.lats.min(), self.lats.max())
-			return plt.plot(self.lats[mask], self.data[mask])
+			ax_0, ax_1 = self.draw_minimap()
+			plt.ylim(self.lats.min(), self.lats.max())
+			return plt.plot(self.data[mask], self.lats[mask], *args, **kwargs)
 	elif len(self.axes) == 2 :
 		#######
 		# MAP #
@@ -371,19 +423,19 @@ class mini_ccb(Normalize):
 		else :
 			return ma.masked_array(np.interp(value, x, y))
 
-def plot_trend(self, hatch = True) :
+def plot_trend(self, hatch = True, orientation='vertical') :
 	import matplotlib.pyplot as plt
 	######################
 	# 1D e.g time series #
 	######################
 	if len(self.slope.shape) == 0 :
 		# solid if trend is signficant
-		self.plot
+		line, = self.plot
 		if self.significance.data :
-			plt.plot(self.dts, self.line.data, lw=2)
+			plt.plot(self.dts, self.line.data, lw=2, color=line.get_color())
 		# dashed otherwise
 		else :
-			plt.plot(self.dts, self.line.data, ls='--')
+			plt.plot(self.dts, self.line.data, ls='--', color=line.get_color())
 	elif len(self.slope.shape) == 1 :
 		# may be necessary
 		#mask = ~np.isnan(self.slope.data)
@@ -434,7 +486,7 @@ def plot_trend(self, hatch = True) :
 					norm=mini_ccb(),
 					zorder=0.5)
 			ca = plt.gca()
-			colorBar = plt.colorbar()
+			colorBar = plt.colorbar(orientation=orientation)
 			# what is the shape of the map we must hatch ?
 			if self.basemap.projection == 'cyl' :
 				hatch = ca.fill(
@@ -460,7 +512,7 @@ def plot_trend(self, hatch = True) :
 							vmax=schnouf.data.max()),
 					zorder=1)
 			if 'units' in self.__dict__ :
-				colorBar.set_label(self.units + 'per year')
+				colorBar.set_label(self.units + ' per decade')
 			graph = self.basemap.pcolormesh(*self.slope.xyz(),
 					cmap=plt.cm.seismic, norm=mini_ccb(), alpha=0.01)
 			#cs = self.basemap.contour(*((-1)*self.significance+0.5).XYZ(), levels=[-0.1, 0])
@@ -479,7 +531,7 @@ def plot_trend(self, hatch = True) :
 					norm=mini_ccb(),
 					zorder = 0.5)
 			ca = plt.gca()
-			plt.colorbar(graph, cax=axs[2])
+			plt.colorbar(graph, cax=axs[2], orientation=orientation)
 			hatch = ca.fill(
 					[self.lons[0], self.lons[-1], self.lons[-1], self.lons[0]],
 					[self.lev.edges[0], self.lev.edges[0],
@@ -513,7 +565,7 @@ def plot_trend(self, hatch = True) :
 					zorder = 0.5)
 			ca = plt.gca()
 			#plt.draw()
-			plt.colorbar(graph)
+			plt.colorbar(graph, orientation=orientation)
 			hatch = ca.fill(
 					[self.lats[0], self.lats[-1], self.lats[-1], self.lats[0]],
 					[self.lev.edges[0], self.lev.edges[0],

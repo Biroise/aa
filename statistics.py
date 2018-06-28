@@ -220,5 +220,25 @@ def eof(variable) :
 	output.data = eof1[0]
 	return output
 
-	
+def smooth(variable, window) :
+	from axis import Axes, TimeAxis
+	from variable import Variable
+	if len(variable.shape) > 1 :
+		raise NotImplementedError	
+	try :
+		variable.dts
+	except :
+		raise NotImplementedError	
+	if window%2 == 0 :
+		raise NotImplementedError	
+	mask = np.ones(window)
+	#mask[int(window/2)] = 1	
+	mask /= window*1.0
+	newAxes = Axes()
+	newAxes['time'] = TimeAxis(variable.dts[int(window/2):-int(window/2)])
+	return Variable(
+			data = np.convolve(variable.data, mask, mode='valid'),
+			axes = newAxes,
+			metadata = variable.metadata)
 
+	

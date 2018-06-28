@@ -187,7 +187,12 @@ class Variable(aa.Variable) :
 			# make item iterable, even when it's a singleton
 			if not isinstance(item, tuple) :
 				if not isinstance(item, list) :
-					item = (item,)
+					if isinstance(item, np.ndarray) :
+						# don't bother if request is an array
+						self._get_data()
+						return super(Variable, self).__getitem__(item)
+					else :
+						item = (item,)
 			# loop through axes in their correct order
 			# and match axis with a sub-item
 			for axisIndex, axisName in enumerate(self.axes) :

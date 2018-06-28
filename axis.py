@@ -251,7 +251,7 @@ class TimeAxis(Axis) :
 
 class Parallel(Axis) :
 	# the parallel being the longitudinal axis
-	def __init__(self, data, units='degrees') :
+	def __init__(self, data, units='degree_east') :
 		super(Parallel, self).__init__(data, units)
 	
 	def condition_matched(self, condition) :
@@ -326,7 +326,7 @@ class Parallel(Axis) :
 		
 
 class Meridian(Axis) :
-	def __init__(self, data, units='degrees') :
+	def __init__(self, data, units='degree_north') :
 		super(Meridian, self).__init__(data, units)
 	
 	@property
