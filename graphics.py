@@ -66,13 +66,12 @@ def _get_basemap(self) :
                     urcrnrlon = self.lons.max(),
                     urcrnrlat = self.lats.max())
     return self._basemap
->>>>>>> 029c5d18c70c9a6de8d211fce9ab458340cad210
+
 def _set_basemap(self, someMap) :
     # user may set basemap himself
     self._basemap = someMap
 
 def _get_minimap(self) :
-<<<<<<< HEAD
     if '_minimap' not in self.__dict__ :
         import matplotlib.pyplot as plt
         from mpl_toolkits.basemap import Basemap
@@ -99,7 +98,7 @@ def _get_minimap(self) :
                 urcrnrlon = lons[-1]+30,
                 urcrnrlat = max(self.lats[0], self.lats[-1]))
     return self._minimap
-=======
+
     if '_minimap' not in self.__dict__ :
         import matplotlib.pyplot as plt
         from mpl_toolkits.basemap import Basemap
@@ -119,12 +118,11 @@ def _get_minimap(self) :
             urcrnrlon = self.lons[-1],
             urcrnrlat = min(lats[1] + 10, 90))
     return self._minimap
->>>>>>> 029c5d18c70c9a6de8d211fce9ab458340cad210
+
 def _set_minimap(self, someMap) :
     # user may set basemap himself
     self._minimap = someMap
 
-<<<<<<< HEAD
 def draw_minimap(self, colorbar = False) :
     import matplotlib.gridspec as gridspec
     import matplotlib.pyplot as plt
@@ -193,7 +191,7 @@ def draw_minimap(self, colorbar = False) :
         plt.setp(axs[0].get_yticklines(), visible=False)
 
     return axs
-=======
+
 def draw_minimap(self, colorbar = False, step = 45) :
     import matplotlib.gridspec as gridspec
     import matplotlib.pyplot as plt
@@ -230,7 +228,6 @@ def draw_minimap(self, colorbar = False, step = 45) :
     plt.setp(axs[0].get_xticklabels(), visible=False)
     plt.setp(axs[0].get_xticklines(), visible=False)
     return axs
->>>>>>> 029c5d18c70c9a6de8d211fce9ab458340cad210
 
 def xyz(self) :
     x, y = self.basemap(
@@ -250,7 +247,6 @@ def XYZ(self) :
         z = self.data
     return x, y, ma.masked_invalid(z)
 
-<<<<<<< HEAD
 def plot(self, *args, **kwargs) :
     import matplotlib.pyplot as plt
     if len(self.axes) == 1 :
@@ -402,7 +398,7 @@ def plot(self, *args, **kwargs) :
             plt.colorbar(graph)
     else :
         raise Exception, "Variable has too many axes or none"
-=======
+
 def plot(self) :
     import matplotlib.pyplot as plt
     if len(self.axes) == 1 :
@@ -541,7 +537,6 @@ def plot(self) :
             plt.colorbar(graph)
     else :
         raise Exception, "Variable has too many axes or none"
->>>>>>> 029c5d18c70c9a6de8d211fce9ab458340cad210
 
 def quiver(zonal, meridional, nx=25, ny=25, **kwargs) :
     import matplotlib.pyplot as plt
@@ -657,7 +652,6 @@ class mini_ccb(Normalize):
         else :
             return ma.masked_array(np.interp(value, x, y))
 
-<<<<<<< HEAD
 def plot_trend(self, hatch = True, orientation='vertical') :
     import matplotlib.pyplot as plt
     ######################
@@ -979,4 +973,3 @@ def plot_trend(self, hatch = True) :
             plt.ylim(self.lev.edges[0], self.lev.edges[-1])
             if self.levs[0] < self.levs[1] :
                 plt.gca().invert_yaxis()
->>>>>>> 029c5d18c70c9a6de8d211fce9ab458340cad210

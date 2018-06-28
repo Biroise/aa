@@ -163,7 +163,6 @@ class Variable(object) :
             return self.axes[attributeName]
         raise AttributeError
 
-<<<<<<< HEAD
     def mean(self, axisNames) :
         # input can either either be like 'zy' or like ['lev', 'lat']
         # turn the 'zy' into ['z', 'y']
