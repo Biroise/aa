@@ -18,6 +18,48 @@ def cycle(self, harmonics=3) :
                 + B*np.sin(2*np.pi*dts*i/365.25)[spatialize]
     return output
 
+def auto_corr (Y) :
+    # works on numpy arrays
+    beginning = Y[:-1]
+    end = Y[1:]
+    return np.nanmean(
+                (beginning - np.nanmean(beginning, 0))*\
+                        (end - np.nanmean(end, 0))/\
+                        (np.nanstd(beginning, 0)*np.nanstd(end, 0)),
+                0)
+
+def corr (self, other) :
+    # swap the names of the variables if "other" is larger than "self"
+    if len(self.shape) < len(other.shape) :
+        self, other = other, self
+    from variable import Variable
+    if type(other) == Variable :
+        other = other.data
+    # the case where the larger input is not a Variable is not considered
+    adjust = len(other.shape)*[slice(None)] + (len(self.shape) - len(other.shape))*[None]
+    # we do not take into accout negative auto-correlation (an oddity)
+    autocorr = np.maximum(auto_corr(self.data), auto_corr(other[adjust]))
+    #corrceof = self[0].empty()
+    corrcoef = ((self - self.mean('t'))*(other - np.nanmean(other, 0))[adjust]).mean('t')/(
+                ((self - self.mean('t'))**2).mean('t')**0.5*
+                np.nanmean((other - np.nanmean(other, 0))**2, 0)**0.5)
+    # taking autocorrelation into account
+    effectiveSampleSize = self.shape[0]*(1 - autocorr)/(1 + autocorr)
+    # two parameters have been estimated : -2
+    # test statistic under the null hypothesis slope == 0
+    # see https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
+    t_stat = corrcoef*((effectiveSampleSize - 2)/(1 - corrcoef.data**2))**0.5
+    from scipy.stats import t as student
+    # two sided student test p = 0.95 becomes a one sided p = 0.975
+    # what test statistics should we surpass ?
+    # minus two degrees of freedom, again
+    t_level = student.ppf(0.975, effectiveSampleSize - 2)
+    # also possible : use cdf to determine p-value of t_stat
+    #p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
+    #print slope.data, sigmaSlope, p_value
+    # per decade rates
+    return corrcoef, t_stat > t_level
+
 def trend (self) :
     if self.dt.step.days < 365 :
         Y = self.yearly

@@ -467,6 +467,15 @@ def annual(self) :
     return Variable(data, axes)
 setattr(Variable, 'annual', annual)
 
+@property
+def DJF_yearly(self) :
+    # extract winter month labelling intuitively last year's December as new year's
+    output = self.DJF
+    from axis import TimeAxis
+    from datetime import timedelta
+    output.axes['time'] = TimeAxis(output.dts + timedelta(days = 31))
+    return output.yearly
+setattr(Variable, 'DJF_yearly', DJF_yearly)
 
 """
 def wrap_smoother(monthNumbers) :
@@ -498,4 +507,5 @@ setattr(Variable, 'div', statistics.div)
 setattr(Variable, 'rot', statistics.rot)
 setattr(Variable, 'cycle', statistics.cycle)
 setattr(Variable, 'smooth', statistics.smooth)
+setattr(Variable, 'corr', statistics.corr)
 
