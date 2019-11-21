@@ -248,30 +248,6 @@ class Variable(object) :
     post = property(statistics.post)
     eof1 = property(statistics.eof1)
     
-    def mean(self, axisNames) :
-        # input can either either be like 'zy' or like ['lev', 'lat']
-        # turn the 'zy' into ['z', 'y']
-        axisNames = list(axisNames)
-        for i in range(len(axisNames)) :
-            axisNames[i] = Axes.standardize(axisNames[i])
-            # levels must be averaged first
-            # 'level' must be at the top of the list
-            if axisNames[i] == 'level' :
-                del axisNames[i]
-                axisNames = ['level'] + axisNames
-        return self.averager(axisNames)
-    
-    basemap = property(graphics._get_basemap, graphics._set_basemap)
-    minimap = property(graphics._get_minimap, graphics._set_minimap)
-    plot = property(graphics.plot)
-    trend = property(statistics.trend)
-    slope = property(statistics.slope)
-    significance = property(statistics.significance)
-    line = property(statistics.line)
-    ante = property(statistics.ante)
-    post = property(statistics.post)
-    eof1 = property(statistics.eof1)
-    
 # allow operations on variables e.g. add, substract, etc.
 def wrap_operator(operatorName) :
     # a function factory
