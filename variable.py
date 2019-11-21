@@ -174,26 +174,41 @@ class Variable(object) :
             if axisNames[i] == 'level' :
                 del axisNames[i]
                 axisNames = ['level'] + axisNames
+            # does not affect the indices of subsequent items
         return self.averager(axisNames)
     
     def averager(self, axisNames) :
+        # mask underground levels before averaging
+        # a call to averager without arguments will take care of the masking and nothing more
+        if 'surfacePressure' in self.metadata :
+            self.metadata['secretPressure'] = self.surfacePressure
+            standUp = []
+            lieDown = []
+            if 'time' in self.axes :
+                standUp = [slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1)
+                lieDown = [None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1)
+            else :
+                standUp = [None] + [slice(None)]*len(sp.shape)
+                lieDown = [slice(None)] + [None]*len(sp.shape)
+            self.data[self.surfacePressure.data[standUp] > self.levs[lieDown]*100] = np.nan
         # still axes needing averaging
         if len(axisNames) > 0 :
+            # copy the metadata (by reference) - no point in copying surface pressure
+            newMetadata = {key:value for key, value in self.metadata.iteritems()
+                    if key in ['surfacePressure', 'secretPressure', 'thickness']}
             # extract the name of the axis to be averaged
             axisName = axisNames.pop(0)
             newAxes = self.axes.copy()
             # get its position and weights
             axisIndex = newAxes.index(axisName)
             weights = newAxes[axisName].weights
-            self.metadata[axisName] = (newAxes[axisName].data.min(),
+            newMetadata[axisName] = (newAxes[axisName].data.min(),
                     newAxes[axisName].data.max())
             # and delete it
             del newAxes[axisName]
-            if axisName == 'level' and 'surfacePressure' in self.metadata :
+            if axisName == 'level' and 'secretPressure' in self.metadata :
                 self.metadata['thickness'] = statistics.sp2thck(self)
             if axisName == 'level' and 'thickness' in self.metadata :
-                newMetaData = self.metadata.copy()
-                del newMetaData['thickness']
                 return Variable(
                             data = np.nansum(self.data*self.thickness.data,
                                     axis=axisIndex)/9.81,
@@ -207,7 +222,7 @@ class Variable(object) :
                             data = np.nansum(self.data*weights[weightSlice],
                                     axis=axisIndex),
                             axes = newAxes,
-                            metadata = self.metadata.copy()
+                            metadata = newMetadata
                         ).averager(axisNames)
             else :
                 weightSlice = [None]*len(self.shape)
@@ -216,7 +231,7 @@ class Variable(object) :
                             data = np.nanmean(self.data*weights[weightSlice]/np.nanmean(weights),\
                                     axis=axisIndex),
                             axes = newAxes,
-                            metadata = self.metadata.copy()
+                            metadata = newMetadata
                         ).averager(axisNames)
         # no axes left to average : return the result
         else :
@@ -245,52 +260,6 @@ class Variable(object) :
                 del axisNames[i]
                 axisNames = ['level'] + axisNames
         return self.averager(axisNames)
-    
-    def averager(self, axisNames) :
-        # still axes needing averaging
-        if len(axisNames) > 0 :
-            # extract the name of the axis to be averaged
-            axisName = axisNames.pop(0)
-            newAxes = self.axes.copy()
-            # get its position and weights
-            axisIndex = newAxes.index(axisName)
-            weights = newAxes[axisName].weights
-            self.metadata[axisName] = (newAxes[axisName].data.min(),
-                    newAxes[axisName].data.max())
-            # and delete it
-            del newAxes[axisName]
-            if axisName == 'level' and 'surfacePressure' in self.metadata :
-                self.metadata['thickness'] = statistics.sp2thck(self)
-            if axisName == 'level' and 'thickness' in self.metadata :
-                newMetaData = self.metadata.copy()
-                del newMetaData['thickness']
-                return Variable(
-                            data = np.nansum(self.data*self.thickness.data,
-                                    axis=axisIndex)/9.81,
-                            axes = newAxes,
-                            metadata = newMetaData 
-                        ).averager(axisNames)
-            elif axisName == 'level' :
-                weightSlice = [None]*len(self.shape)
-                weightSlice[axisIndex] = slice(None)
-                return Variable(
-                            data = np.nansum(self.data*weights[weightSlice],
-                                    axis=axisIndex),
-                            axes = newAxes,
-                            metadata = self.metadata.copy()
-                        ).averager(axisNames)
-            else :
-                weightSlice = [None]*len(self.shape)
-                weightSlice[axisIndex] = slice(None)
-                return Variable(
-                            data = np.nanmean(self.data*weights[weightSlice]/np.nanmean(weights),\
-                                    axis=axisIndex),
-                            axes = newAxes,
-                            metadata = self.metadata.copy()
-                        ).averager(axisNames)
-        # no axes left to average : return the result
-        else :
-            return self
     
     basemap = property(graphics._get_basemap, graphics._set_basemap)
     minimap = property(graphics._get_minimap, graphics._set_minimap)

@@ -148,8 +148,8 @@ def line(self) :
     return output
 
 def sp2thck(self) :
-    thickness = self.copy()*0
-    sp = self.surfacePressure
+    thickness = self.zeros()
+    sp = self.secretPressure
     levels = self.levs
     if 'time' in self.axes :
         standUp = [slice(None)] + [None] + [slice(None)]*(len(sp.shape)-1)
