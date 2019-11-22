@@ -92,7 +92,21 @@ class Variable(object) :
             slices[axisName] = slice(None)
         # the new variable's axes and metadata
         newAxes = self.axes.copy()
-        newMetadata = self.metadata.copy()
+        # lazy copy of the metadata
+        #newMetadata = self.metadata.copy()
+        # ideally : slice the pressure field as well except! level slice
+        # for now let's play it safe
+        newMetadata = {key:value for key, value in self.metadata.iteritems()
+                if key not in ['surfacePressure', 'thickness', 'maskedValues']}
+        # slice the maskedValues exactly the same way
+        if 'maskedValues' in self.metadata :
+            newMetadata['maskedValues'] = self.metadata['maskedValues'](**kwargs)
+        # daughter variable does not inherit surfacePressure, etc. if 'level' is sliced
+        if 'level' not in kwargs :
+            if 'thickness' in self.metadata :
+                newMetadata['thickness'] = self.metadata['thickness'](**kwargs)
+            if 'surfacePressure' in self.metadata :
+                newMetadata['surfacePressure'] = self.metadata['surfacePressure'](**kwargs)
         # dispatch the conditions to the axes
         for axisName, condition in kwargs.iteritems() :
             item, newAxis = self.axes[axisName](condition)
@@ -178,24 +192,11 @@ class Variable(object) :
         return self.averager(axisNames)
     
     def averager(self, axisNames) :
-        # mask underground levels before averaging
-        # a call to averager without arguments will take care of the masking and nothing more
-        if 'surfacePressure' in self.metadata :
-            self.metadata['secretPressure'] = self.surfacePressure
-            standUp = []
-            lieDown = []
-            if 'time' in self.axes :
-                standUp = [slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1)
-                lieDown = [None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1)
-            else :
-                standUp = [None] + [slice(None)]*len(sp.shape)
-                lieDown = [slice(None)] + [None]*len(sp.shape)
-            self.data[self.surfacePressure.data[standUp] > self.levs[lieDown]*100] = np.nan
         # still axes needing averaging
         if len(axisNames) > 0 :
             # copy the metadata (by reference) - no point in copying surface pressure
             newMetadata = {key:value for key, value in self.metadata.iteritems()
-                    if key in ['surfacePressure', 'secretPressure', 'thickness']}
+                    if key not in ['surfacePressure', 'thickness']}
             # extract the name of the axis to be averaged
             axisName = axisNames.pop(0)
             newAxes = self.axes.copy()
@@ -206,7 +207,7 @@ class Variable(object) :
                     newAxes[axisName].data.max())
             # and delete it
             del newAxes[axisName]
-            if axisName == 'level' and 'secretPressure' in self.metadata :
+            if axisName == 'level' and 'surfacePressure' in self.metadata :
                 self.metadata['thickness'] = statistics.sp2thck(self)
             if axisName == 'level' and 'thickness' in self.metadata :
                 return Variable(
@@ -227,11 +228,14 @@ class Variable(object) :
             else :
                 weightSlice = [None]*len(self.shape)
                 weightSlice[axisIndex] = slice(None)
+                reverseSlice = [slice(None)]*len(self.shape)
+                reverseSlice[axisIndex] = None
+                # a modifier : on veut garder les nans des slices vides
                 return Variable(
                             data = np.nanmean(self.data*weights[weightSlice]/np.nanmean(weights),\
                                     axis=axisIndex),
                             axes = newAxes,
-                            metadata = newMetadata
+                            metadata = self.metadata.copy()
                         ).averager(axisNames)
         # no axes left to average : return the result
         else :
@@ -439,7 +443,32 @@ def absolute(self) :
             metadata = self.metadata.copy(),
             axes = self.axes.copy())
 setattr(Variable, 'abs', absolute)
+
+def _get_sp(self) :
+    return self.metadata['surfacePressure']
+
+def _set_sp(self, sp) :
+    self.metadata['surfacePressure'] = sp
+    # this would give the user the option not to mask underground levels... not so useful
+    #self.metadata['secretPressure'] = self.surfacePressure
+    standUp = []
+    lieDown = []
+    if 'time' in self.axes :
+        standUp = [slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1)
+        lieDown = [None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1)
+    else :
+        standUp = [None] + [slice(None)]*len(sp.shape)
+        lieDown = [slice(None)] + [None]*len(sp.shape)
+    self.data[self.surfacePressure.data[standUp] < self.levs[lieDown]*100] = np.nan
+
+def _del_sp(self) :
+    del self.metadata['surfacePressure']
+
+sp = property(_get_sp, _set_sp, _del_sp)
+setattr(Variable, 'surfacePressure', sp)
+
     
+# import Variable methods from other python files
 setattr(Variable, 'quiver', graphics.quiver)
 setattr(Variable, 'streamplot', graphics.streamplot)
 setattr(Variable, 'draw_minimap', graphics.draw_minimap)
@@ -453,4 +482,3 @@ setattr(Variable, 'rot', statistics.rot)
 setattr(Variable, 'cycle', statistics.cycle)
 setattr(Variable, 'smooth', statistics.smooth)
 setattr(Variable, 'corr', statistics.corr)
-
