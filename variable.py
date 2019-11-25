@@ -97,10 +97,10 @@ class Variable(object) :
         # ideally : slice the pressure field as well except! level slice
         # for now let's play it safe
         newMetadata = {key:value for key, value in self.metadata.iteritems()
-                if key not in ['surfacePressure', 'thickness', 'maskedValues']}
-        # slice the maskedValues exactly the same way
-        if 'maskedValues' in self.metadata :
-            newMetadata['maskedValues'] = self.metadata['maskedValues'](**kwargs)
+                if key not in ['surfacePressure', 'thickness', 'maskedFraction']}
+        # slice the maskedFraction exactly the same way
+        if 'maskedFraction' in self.metadata :
+            newMetadata['maskedFraction'] = self.metadata['maskedFraction'](**kwargs)
         # daughter variable does not inherit surfacePressure, etc. if 'level' is sliced
         if 'level' not in kwargs :
             if 'thickness' in self.metadata :
@@ -196,16 +196,16 @@ class Variable(object) :
         if len(axisNames) > 0 :
             # copy the metadata (by reference) - no point in copying surface pressure
             newMetadata = {key:value for key, value in self.metadata.iteritems()
-                    if key not in ['surfacePressure', 'thickness']}
+                    if key not in ['surfacePressure', 'thickness', 'maskedFraction']}
             # extract the name of the axis to be averaged
             axisName = axisNames.pop(0)
             newAxes = self.axes.copy()
-            # get its position and weights
+            # get the axis' position and weights
             axisIndex = newAxes.index(axisName)
             weights = newAxes[axisName].weights
             newMetadata[axisName] = (newAxes[axisName].data.min(),
                     newAxes[axisName].data.max())
-            # and delete it
+            # and delete the axis
             del newAxes[axisName]
             if axisName == 'level' and 'surfacePressure' in self.metadata :
                 self.metadata['thickness'] = statistics.sp2thck(self)
@@ -226,6 +226,18 @@ class Variable(object) :
                             metadata = newMetadata
                         ).averager(axisNames)
             else :
+                # check for nans and the prior existence of maskedFraction
+                if isnan(self.data).any() and maskedFraction not in self.metadata :
+                        newMetadata['maskedFraction'] = Variable(
+                                data = isnan(self.data).mean(axisIndex),
+                                axes = newAxes)
+                # if there has already been some averaging going on involving nans
+                elif maskedFraction in self.metadata :
+                        newMetadata['maskedFraction'] = Variable(
+                                data = self.metadata['maskedFraction'].mean(axisIndex),
+                                axes = newAxes)
+                # if you average first along the horizontal and then the vertical
+                # and hope to mask underground levels, the script will fail (as it should)
                 weightSlice = [None]*len(self.shape)
                 weightSlice[axisIndex] = slice(None)
                 reverseSlice = [slice(None)]*len(self.shape)
