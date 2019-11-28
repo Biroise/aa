@@ -232,7 +232,7 @@ class Variable(object) :
                                 data = np.isnan(self.data).mean(axisIndex),
                                 axes = newAxes)
                 # if there has already been some averaging going on involving nans
-                elif maskedFraction in self.metadata :
+                elif 'maskedFraction' in self.metadata :
                         newMetadata['maskedFraction'] = Variable(
                                 data = self.metadata['maskedFraction'].mean(axisIndex),
                                 axes = newAxes)
