@@ -55,6 +55,7 @@ class File(object) :
                             output.variables[axisName].units = axis.units
                     # TODO metadata...
             for variableName, variable in self.variables.iteritems() :
+                variable.censor_nans(ratio = 1./3)
                 if variableName == '~' :
                     variableName = 'unknown'
                 output.createVariable(

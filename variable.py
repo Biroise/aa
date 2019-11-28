@@ -227,9 +227,9 @@ class Variable(object) :
                         ).averager(axisNames)
             else :
                 # check for nans and the prior existence of maskedFraction
-                if isnan(self.data).any() and maskedFraction not in self.metadata :
+                if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
                         newMetadata['maskedFraction'] = Variable(
-                                data = isnan(self.data).mean(axisIndex),
+                                data = np.isnan(self.data).mean(axisIndex),
                                 axes = newAxes)
                 # if there has already been some averaging going on involving nans
                 elif maskedFraction in self.metadata :
@@ -252,6 +252,10 @@ class Variable(object) :
         # no axes left to average : return the result
         else :
             return self
+
+    def censor_nans(self, ratio=1./3) :
+        if 'maskedFraction' in self.metadata :
+            self.data[self.metadata['maskedFraction'] > ratio] = np.nan
     
     basemap = property(graphics._get_basemap, graphics._set_basemap)
     minimap = property(graphics._get_minimap, graphics._set_minimap)
