@@ -27,7 +27,7 @@ class File(object) :
     def close(self) :
         pass
     
-    def write(self, filePath) :
+    def write(self, filePath, compress = True) :
         from netCDF4 import Dataset
         # making sure the variable's axes are given
         # to the file is the user's responsability
@@ -63,7 +63,8 @@ class File(object) :
                         type(np.asscalar(variable.data.ravel()[0])),
                         tuple(
                             [Axes.ncStandardize(axisName) for axisName in 
-                            variable.axes.keys()]))
+                            variable.axes.keys()]),
+                        zlib = compress)
                 if 'units' in variable.metadata :
                     output.variables[variableName].units = variable.units
                 output.variables[variableName][:] = variable.data

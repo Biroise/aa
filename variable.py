@@ -162,12 +162,12 @@ class Variable(object) :
     def close(self) :
         pass
 
-    def write(self, filePath) :
+    def write(self, filePath, compress = True) :
         from file import File
         if 'shortName' not in self.metadata :
             self.metadata['shortName'] = 'unknown'
         fileOut = File(axes=self.axes, variables={self.shortName:self})
-        fileOut.write(filePath)
+        fileOut.write(filePath, compress = compress)
 
     def __getattr__(self, attributeName) :
         if 'metadata' in self.__dict__ :
