@@ -214,7 +214,7 @@ class Variable(object) :
                             data = np.nansum(self.data*self.thickness.data,
                                     axis=axisIndex)/9.81,
                             axes = newAxes,
-                            metadata = newMetaData 
+                            metadata = newMetadata 
                         ).averager(axisNames)
             elif axisName == 'level' :
                 weightSlice = [None]*len(self.shape)
