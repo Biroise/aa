@@ -363,39 +363,43 @@ def plot(self, *args, **kwargs) :
 
 def quiver(zonal, meridional, nx=25, ny=25, **kwargs) :
     import matplotlib.pyplot as plt
+    # save the basempa because the __call__ will overwrite it
+    bm = zonal.basemap
     zonal = zonal(lon=(-180, 180))
     meridional = meridional(lon=(-180, 180))
-    zonal.basemap.drawcoastlines()
+    bm.drawcoastlines()
     order = slice(None)
     if zonal.lats[0] > zonal.lats[1] :
         order = slice(None, None, -1)
-    if zonal.basemap.projection == 'cyl' :
+    if bm.projection == 'cyl' :
         x, y = np.meshgrid(zonal.lons, zonal.lats)
-        graph = zonal.basemap.quiver(x, y, zonal.data, meridional.data, **kwargs)
-    elif zonal.basemap.projection == 'splaea' :
-        u, v, x, y = zonal.basemap.transform_vector(
+        graph = bm.quiver(x, y, zonal.data, meridional.data, **kwargs)
+    elif bm.projection == 'splaea' :
+        u, v, x, y = bm.transform_vector(
                 -zonal.data[order], -meridional.data[order], zonal.lons,
                 zonal.lats[order], nx, ny,     returnxy = True, masked=True)
-        graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
+        graph = bm.quiver(x, y, u, v, **kwargs)
     else :
-        u, v, x, y = zonal.basemap.transform_vector(
+        u, v, x, y = bm.transform_vector(
                 zonal.data[order], meridional.data[order], zonal.lons,
                 zonal.lats[order], nx, ny,     returnxy = True, masked=True)
-        graph = zonal.basemap.quiver(x, y, u, v, **kwargs)
+        graph = bm.quiver(x, y, u, v, **kwargs)
     return graph
 
 def streamplot(zonal, meridional, nx=15, ny=15, **kwargs) :
     import matplotlib.pyplot as plt
+    # save the basempa because the __call__ will overwrite it
+    bm = zonal.basemap
     zonal = zonal(lon=(-179, 179))
     meridional = meridional(lon=(-179, 179))
-    zonal.basemap.drawcoastlines()
+    bm.drawcoastlines()
     order = slice(None)
     if zonal.lats[0] > zonal.lats[1] :
         order = slice(None, None, -1)
-    u, v, x, y = zonal.basemap.transform_vector(
+    u, v, x, y = bm.transform_vector(
             zonal.data[order], meridional.data[order], zonal.lons,
             zonal.lats[order], nx, ny,     returnxy = True, masked=True)
-    graph = zonal.basemap.streamplot(x, y, u, v, **kwargs)
+    graph = bm.streamplot(x, y, u, v, **kwargs)
     return graph
 
 def taylor(reference, variables, rect=111) :
