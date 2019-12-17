@@ -4,7 +4,9 @@ Initialisation code for package aa
 Contains the critical 'open' function
 """
 
+from axis import *
 from file import File
+from variable import Variable
 
 import numpy as np
 
