@@ -486,7 +486,7 @@ def plot_trend(self, hatch = True, orientation='vertical') :
     ######################
     if len(self.slope.shape) == 0 :
         # solid if trend is signficant
-        line, = self.plot
+        line, = self.plot()
         if self.significance.data :
             plt.plot(self.dts, self.line.data, lw=2, color=line.get_color())
         # dashed otherwise
