@@ -479,14 +479,14 @@ class mini_ccb(Normalize):
         else :
             return ma.masked_array(np.interp(value, x, y))
 
-def plot_trend(self, hatch = True, orientation='vertical') :
+def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
     import matplotlib.pyplot as plt
     ######################
     # 1D e.g time series #
     ######################
     if len(self.slope.shape) == 0 :
         # solid if trend is signficant
-        line, = self.plot()
+        line, = self.plot(**kwargs)
         if self.significance.data :
             plt.plot(self.dts, self.line.data, lw=2, color=line.get_color())
         # dashed otherwise
@@ -516,7 +516,7 @@ def plot_trend(self, hatch = True, orientation='vertical') :
             output = plt.plot(self.lons,schnouf.data, lw = 0.5)[0]
             color = output.get_color()
             output = (output, 
-                    plt.plot(self.lons, schnouf, lw = 1.5, color=color)[0])
+                    plt.plot(self.lons, schnouf, lw = 1.5, color=color)[0], **kwargs)
             plt.xlim(self.lons.min(), self.lons.max())
             return ax_0, ax_1, output
         ####################
@@ -525,7 +525,7 @@ def plot_trend(self, hatch = True, orientation='vertical') :
         if 'latitude' in self.axes :
             #self.draw_minimap()
             plt.xlim(self.lats.min(), self.lats.max())
-            return plt.plot(self.lats, self.data)
+            return plt.plot(self.lats, self.data, **kwargs)
     elif len(self.slope.shape) == 2 :
         schnouf = np.ma.array(data = self.slope.data, mask = self.significance.data)
         #######
@@ -566,7 +566,8 @@ def plot_trend(self, hatch = True, orientation='vertical') :
                     norm=mini_ccb(
                             vmin=schnouf.data.min(),
                             vmax=schnouf.data.max()),
-                    zorder=1)
+                    zorder=1,
+                    **kwargs)
             if 'units' in self.__dict__ :
                 colorBar.set_label(self.units + ' per decade')
             graph = self.basemap.pcolormesh(*self.slope.xyz(),
@@ -602,7 +603,8 @@ def plot_trend(self, hatch = True, orientation='vertical') :
                     x, y, schnouf,
                     zorder = 1,
                     norm=mini_ccb(),
-                    cmap=plt.cm.seismic)
+                    cmap=plt.cm.seismic,
+                    **kwargs)
             plt.xlim(self.lons[0], self.lons[-1])
             plt.ylim(self.lev.edges[0], self.lev.edges[-1])
             if self.levs[0] < self.levs[1] :
@@ -634,7 +636,8 @@ def plot_trend(self, hatch = True, orientation='vertical') :
             graph = plt.pcolormesh(
                     x, y, schnouf,
                     zorder = 1,
-                    cmap=plt.cm.seismic, norm=mini_ccb())
+                    cmap=plt.cm.seismic, norm=mini_ccb(),
+                    **kwargs)
             plt.xlim(self.lats[0], self.lats[-1])
             plt.ylim(self.lev.edges[0], self.lev.edges[-1])
             if self.levs[0] < self.levs[1] :
