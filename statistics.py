@@ -18,7 +18,7 @@ def cycle(self, harmonics=3) :
                 + B*np.sin(2*np.pi*dts*i/365.25)[spatialize]
     return output
 
-def auto_corr (Y) :
+def auto_correlate (Y) :
     # works on numpy arrays
     beginning = Y[:-1]
     end = Y[1:]
@@ -38,7 +38,7 @@ def corr (self, other) :
     # the case where the larger input is not a Variable is not considered
     adjust = len(other.shape)*[slice(None)] + (len(self.shape) - len(other.shape))*[None]
     # we do not take into accout negative auto-correlation (an oddity)
-    autocorr = np.maximum(auto_corr(self.data), auto_corr(other[adjust]))
+    autocorr = np.maximum(auto_correlate(self.data), auto_correlate(other[adjust]))
     #corrceof = self[0].empty()
     corrcoef = ((self - self.mean('t'))*(other - np.nanmean(other, 0))[adjust]).mean('t')/(
                 ((self - self.mean('t'))**2).mean('t')**0.5*
@@ -65,13 +65,6 @@ def trend (self) :
         Y = self.yearly
     else :
         Y = self
-    beginning = Y.data[:-1]
-    end = Y.data[1:]
-    autocorr = np.nanmean(
-            (beginning - np.nanmean(beginning, 0))*\
-                    (end - np.nanmean(end, 0))/\
-                    (np.nanstd(beginning, 0)*np.nanstd(end, 0)),
-            0)
     # predictor
     X = Y.dt.total_seconds/3600
     spatialize = [slice(None)] + [None]*len(Y.shape[1:])
@@ -79,6 +72,7 @@ def trend (self) :
     slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
     # residuals = Y - AX - B
     residuals = Y.data - slope.data*(X - np.nanmean(X))[spatialize] - np.nanmean(Y.data, 0)
+    autocorr = auto_correlate(residuals)
     # taking autocorrelation into account
     effectiveSampleSize = len(Y.dts)*(1 - autocorr)/(1 + autocorr)
     # variance of the residuals
