@@ -516,7 +516,7 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
             output = plt.plot(self.lons,schnouf.data, lw = 0.5)[0]
             color = output.get_color()
             output = (output, 
-                    plt.plot(self.lons, schnouf, lw = 1.5, color=color)[0], **kwargs)
+                    plt.plot(self.lons, schnouf, lw = 1.5, color=color, **kwargs)[0])
             plt.xlim(self.lons.min(), self.lons.max())
             return ax_0, ax_1, output
         ####################
