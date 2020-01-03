@@ -437,6 +437,8 @@ class Meridian(Axis) :
                 default[endIndex] = -90
         return default
 
+class Months(Axis) :
+    pass
 
 class Vertical(Axis) :
     @property
