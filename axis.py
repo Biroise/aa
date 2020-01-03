@@ -437,8 +437,11 @@ class Meridian(Axis) :
                 default[endIndex] = -90
         return default
 
+
 class Months(Axis) :
-    pass
+    def __init__(self) :
+        super(Months, self).__init__(range(1, 13), units=None)
+
 
 class Vertical(Axis) :
     @property
