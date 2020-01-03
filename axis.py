@@ -440,7 +440,7 @@ class Meridian(Axis) :
 
 class Months(Axis) :
     def __init__(self) :
-        super(Months, self).__init__(range(1, 13), units=None)
+        super(Months, self).__init__(range(1, 13), units='indices')
 
 
 class Vertical(Axis) :
