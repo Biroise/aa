@@ -368,6 +368,7 @@ def yearly(self) :
             metadata = self.metadata.copy())
 setattr(Variable, 'yearly', yearly)
     
+"""
 @property
 def monthly(self) :
     from datetime import datetime
@@ -400,6 +401,35 @@ def monthly(self) :
             else : 
                 maskSlice.append(slice(None))
         newData[idx] = np.nanmean(self.data[maskSlice], 0)
+    return Variable(
+            data = newData,
+            axes = newAxes,
+            metadata = self.metadata.copy())
+setattr(Variable, 'monthly', monthly)
+"""
+    
+@property
+def monthly(self) :
+    # more rigid than before : starts in January, ends in December
+    # for some reason, a full slice was supplied to the source data
+    from datetime import datetime
+    yearMonths = [datetime(year, month, 1)
+            for year in range(self.dts[0].year, self.dts[-1].year + 1)
+            for month in range(1, 13)]
+    # array containing each time step's year
+    YEARS = self.dt.years
+    # array containing each time step's month
+    MONTHS = self.dt.months
+    newAxes = self.axes.copy()
+    from axis import TimeAxis
+    newAxes['time'] = TimeAxis(yearMonths)
+    newData = np.empty(newAxes.shape)
+    newData[:] = np.nan
+    for idx, yearMonth in enumerate(yearMonths) :
+        mask = np.logical_and(
+                        YEARS == yearMonth.year,
+                        MONTHS == yearMonth.month)
+        newData[idx] = np.nanmean(self.data[mask], 0)
     return Variable(
             data = newData,
             axes = newAxes,
