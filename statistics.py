@@ -280,15 +280,4 @@ def smooth(variable, window) :
             data = np.convolve(variable.data, mask, mode='valid'),
             axes = newAxes,
             metadata = variable.metadata)
-    from eofs.standard import Eof
-    wgts = np.cos(variable.lats*np.pi/180)**0.5
-    solver = Eof(variable.data, weights = wgts[:, None])
-    eof1 = solver.eofs(eofscaling=2, neofs=1)
-    print solver.varianceFraction(neigs=1)[0]*100, '%'
-    output = variable[0].empty()
-    output.data = eof1[0]
-    return output
-
-    
-
-    
+   
