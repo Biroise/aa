@@ -72,8 +72,12 @@ def trend (self) :
     slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
     # residuals = Y - AX - B
     residuals = Y.data - slope.data*(X - np.nanmean(X))[spatialize] - np.nanmean(Y.data, 0)
+    # taking autocorrelation into account : computed from residuals, not the original series
     autocorr = auto_correlate(residuals)
-    # taking autocorrelation into account
+    # Wilks suggests using the original series ; Santer & al. 2000 states the dilemna
+    # synthetic times series with strong built-in trends make it obvious residuals should be used
+    # the trend is a source of auto-correlation accounted for in the model
+    # leaving the trend makes the effective sample sign unduly small => type II error
     effectiveSampleSize = len(Y.dts)*(1 - autocorr)/(1 + autocorr)
     # variance of the residuals
     # mean(residuals) = 0
