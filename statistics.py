@@ -48,6 +48,38 @@ def corr (self, other) :
     # test statistic under the null hypothesis slope == 0
     # see Wilks page 141
     t_stat = (slope.abs() - 0)/sigmaSlope
+
+def auto_correlate (Y) :
+    # works on numpy arrays
+    beginning = Y[:-1]
+    end = Y[1:]
+    return np.nanmean(
+                (beginning - np.nanmean(beginning, 0))*\
+                        (end - np.nanmean(end, 0))/\
+                        (np.nanstd(beginning, 0)*np.nanstd(end, 0)),
+                0)
+
+def corr (self, other) :
+    # swap the names of the variables if "other" is larger than "self"
+    if len(self.shape) < len(other.shape) :
+        self, other = other, self
+    from variable import Variable
+    if type(other) == Variable :
+        other = other.data
+    # the case where the larger input is not a Variable is not considered
+    adjust = len(other.shape)*[slice(None)] + (len(self.shape) - len(other.shape))*[None]
+    # we do not take into accout negative auto-correlation (an oddity)
+    autocorr = np.maximum(auto_correlate(self.data), auto_correlate(other[adjust]))
+    #corrceof = self[0].empty()
+    corrcoef = ((self - self.mean('t'))*(other - np.nanmean(other, 0))[adjust]).mean('t')/(
+                ((self - self.mean('t'))**2).mean('t')**0.5*
+                np.nanmean((other - np.nanmean(other, 0))**2, 0)**0.5)
+    # taking autocorrelation into account
+    effectiveSampleSize = self.shape[0]*(1 - autocorr)/(1 + autocorr)
+    # two parameters have been estimated : -2
+    # test statistic under the null hypothesis slope == 0
+    # see https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
+    t_stat = corrcoef*((effectiveSampleSize - 2)/(1 - corrcoef.data**2))**0.5
     from scipy.stats import t as student
     # two sided student test p = 0.95 becomes a one sided p = 0.975
     # what test statistics should we surpass ?
@@ -58,19 +90,16 @@ def corr (self, other) :
     #print slope.data, sigmaSlope, p_value
     # per decade rates
     return coef, t_stat > t_level
+    #p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
+    #print slope.data, sigmaSlope, p_value
+    # per decade rates
+    return corrcoef, t_stat > t_level
 
 def trend (self) :
     if self.dt.step.days < 365 :
         Y = self.yearly
     else :
         Y = self
-    beginning = Y.data[:-1]
-    end = Y.data[1:]
-    autocorr = np.nanmean(
-            (beginning - np.nanmean(beginning, 0))*\
-                    (end - np.nanmean(end, 0))/\
-                    (np.nanstd(beginning, 0)*np.nanstd(end, 0)),
-            0)
     # predictor
     X = Y.dt.total_seconds/3600
     spatialize = [slice(None)] + [None]*len(Y.shape[1:])
@@ -78,6 +107,7 @@ def trend (self) :
     slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
     # residuals = Y - AX - B
     residuals = Y.data - slope.data*(X - np.nanmean(X))[spatialize] - np.nanmean(Y.data, 0)
+    autocorr = auto_correlate(residuals)
     # taking autocorrelation into account
     effectiveSampleSize = len(Y.dts)*(1 - autocorr)/(1 + autocorr)
     # variance of the residuals
@@ -147,7 +177,7 @@ def line(self) :
     return output
 
 def sp2thck(self) :
-    thickness = self.copy()*0
+    thickness = self.zeros()
     sp = self.surfacePressure
     levels = self.levs
     if 'time' in self.axes :
@@ -281,15 +311,4 @@ def smooth(variable, window) :
             data = np.convolve(variable.data, mask, mode='valid'),
             axes = newAxes,
             metadata = variable.metadata)
-    from eofs.standard import Eof
-    wgts = np.cos(variable.lats*np.pi/180)**0.5
-    solver = Eof(variable.data, weights = wgts[:, None])
-    eof1 = solver.eofs(eofscaling=2, neofs=1)
-    print solver.varianceFraction(neigs=1)[0]*100, '%'
-    output = variable[0].empty()
-    output.data = eof1[0]
-    return output
-
-    
-
-    
+   
