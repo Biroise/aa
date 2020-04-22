@@ -399,6 +399,7 @@ def plot(self, *args, **kwargs) :
     else :
         raise Exception, "Variable has too many axes or none"
 
+"""
 def plot(self) :
     import matplotlib.pyplot as plt
     if len(self.axes) == 1 :
@@ -537,6 +538,7 @@ def plot(self) :
             plt.colorbar(graph)
     else :
         raise Exception, "Variable has too many axes or none"
+"""
 
 def quiver(zonal, meridional, nx=25, ny=25, **kwargs) :
     import matplotlib.pyplot as plt

@@ -18,6 +18,47 @@ def cycle(self, harmonics=3) :
                 + B*np.sin(2*np.pi*dts*i/365.25)[spatialize]
     return output
 
+def corr (self, other) :
+    Y = self
+    beginning = Y.data[:-1]
+    end = Y.data[1:]
+    autocorr = np.nanmean(
+            (beginning - np.nanmean(beginning, 0))*\
+                    (end - np.nanmean(end, 0))/\
+                    (np.nanstd(beginning, 0)*np.nanstd(end, 0)),
+            0)
+    # predictor
+    X = other.data
+    spatialize = [slice(None)] + [None]*len(Y.shape[1:])
+    # slope = covariance(x, y)/variance(x)
+    slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
+    coef = ((Y - Y.mean('t'))/np.nanstd(Y.data)*((X - np.nanmean(X))/np.nanstd(X))[spatialize]).mean('t')
+    # residuals = Y - AX - B
+    residuals = Y.data - slope.data*(X - np.nanmean(X))[spatialize] - np.nanmean(Y.data, 0)
+    # taking autocorrelation into account
+    effectiveSampleSize = len(Y.dts)*(1 - autocorr)/(1 + autocorr)
+    #effectiveSampleSize = len(Y.dts)
+    # variance of the residuals
+    # mean(residuals) = 0
+    # two parameters have been estimated : -2
+    varianceResiduals = np.nansum(
+            (residuals - 0)**2, 0)/(effectiveSampleSize - 2)
+    # std of the sampling distribution of the slope
+    sigmaSlope = (varianceResiduals/((X - X.mean())**2).sum())**0.5
+    # test statistic under the null hypothesis slope == 0
+    # see Wilks page 141
+    t_stat = (slope.abs() - 0)/sigmaSlope
+    from scipy.stats import t as student
+    # two sided student test p = 0.95 becomes a one sided p = 0.975
+    # what test statistics should we surpass ?
+    # minus two degrees of freedom, again
+    t_level = student.ppf(0.975, effectiveSampleSize - 2)
+    # also possible : use cdf to determine p-value of t_stat
+    p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
+    #print slope.data, sigmaSlope, p_value
+    # per decade rates
+    return coef, t_stat > t_level
+
 def trend (self) :
     if self.dt.step.days < 365 :
         Y = self.yearly
