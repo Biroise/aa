@@ -212,7 +212,7 @@ class Variable(object) :
             if axisName == 'level' and 'thickness' in self.metadata :
                 return Variable(
                             data = np.nansum(self.data*self.thickness.data,
-                                    axis=axisIndex)/9.81,
+                                    axis=axisIndex),
                             axes = newAxes,
                             metadata = newMetadata 
                         ).averager(axisNames)
