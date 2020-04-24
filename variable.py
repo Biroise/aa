@@ -496,7 +496,6 @@ setattr(Variable, 'abs', absolute)
 
 def _get_sp(self) :
     return self.metadata['surfacePressure']
-
 def _set_sp(self, sp) :
     self.metadata['surfacePressure'] = sp
     # this would give the user the option not to mask underground levels... not so useful
@@ -510,13 +509,31 @@ def _set_sp(self, sp) :
         standUp = [None] + [slice(None)]*len(sp.shape)
         lieDown = [slice(None)] + [None]*len(sp.shape)
     self.data[self.surfacePressure.data[standUp] < self.levs[lieDown]*100] = np.nan
-
 def _del_sp(self) :
     del self.metadata['surfacePressure']
-
 sp = property(_get_sp, _set_sp, _del_sp)
 setattr(Variable, 'surfacePressure', sp)
 
+def _get_od(self) :
+    return self.metadata['oceanDepth']
+def _set_od(self, od) :
+    self.metadata['oceanDepth'] = od
+    standUp = []
+    lieDown = []
+    if 'time' in self.axes :
+        # unlike pressure, depth is constant in time
+        standUp = [None, None] + [slice(None)]*(len(self.oceanDepth.shape)-1)
+        lieDown = [None, slice(None)] + [None]*(len(self.oceanDepth.shape)-1)
+    else :
+        standUp = [None] + [slice(None)]*len(od.shape)
+        lieDown = [slice(None)] + [None]*len(od.shape)
+    self.data[self.oceanDepth.data[standUp] < self.levs[lieDown]*100] = np.nan
+def _del_od(self) :
+    del self.metadata['oceanDepth']
+od = property(_get_od, _set_od, _del_od)
+setattr(Variable, 'oceanDepth', od)
+
+    
     
 # import Variable methods from other python files
 setattr(Variable, 'quiver', graphics.quiver)
