@@ -527,14 +527,12 @@ def _set_od(self, od) :
     else :
         standUp = [None] + [slice(None)]*len(od.shape)
         lieDown = [slice(None)] + [None]*len(od.shape)
-    self.data[self.oceanDepth.data[standUp] < self.levs[lieDown]*100] = np.nan
+    self.data[self.oceanDepth.data[standUp] < self.levs[lieDown]] = np.nan
 def _del_od(self) :
     del self.metadata['oceanDepth']
 od = property(_get_od, _set_od, _del_od)
 setattr(Variable, 'oceanDepth', od)
 
-    
-    
 # import Variable methods from other python files
 setattr(Variable, 'quiver', graphics.quiver)
 setattr(Variable, 'streamplot', graphics.streamplot)
