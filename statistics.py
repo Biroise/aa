@@ -213,7 +213,7 @@ def sp2thck(self) :
                 levels[lieDown]*100)
     thickness.data[shiftZ] += 0.5*np.abs(np.diff(LEVELs, axis=zAxis))
     thickness.data[antiShiftZ] += 0.5*np.abs(np.diff(LEVELs, axis=zAxis))
-    return thickness
+    return thickness/9.81
 
 def zonal_diff(variable) :
     output = np.empty(variable.shape)

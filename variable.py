@@ -97,7 +97,7 @@ class Variable(object) :
         # ideally : slice the pressure field as well except! level slice
         # for now let's play it safe
         newMetadata = {key:value for key, value in self.metadata.iteritems()
-                if key not in ['surfacePressure', 'thickness', 'maskedFraction']}
+                if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
         # slice the maskedFraction exactly the same way
         if 'maskedFraction' in self.metadata :
             newMetadata['maskedFraction'] = self.metadata['maskedFraction'](**kwargs)
@@ -107,6 +107,8 @@ class Variable(object) :
                 newMetadata['thickness'] = self.metadata['thickness'](**kwargs)
             if 'surfacePressure' in self.metadata :
                 newMetadata['surfacePressure'] = self.metadata['surfacePressure'](**kwargs)
+            if 'oceanDepth' in self.metadata :
+                newMetadata['oceanDepth'] = self.metadata['oceanDepth'](**kwargs)
         # dispatch the conditions to the axes
         for axisName, condition in kwargs.iteritems() :
             item, newAxis = self.axes[axisName](condition)
@@ -196,7 +198,7 @@ class Variable(object) :
         if len(axisNames) > 0 :
             # copy the metadata (by reference) - no point in copying surface pressure
             newMetadata = {key:value for key, value in self.metadata.iteritems()
-                    if key not in ['surfacePressure', 'thickness', 'maskedFraction']}
+                    if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
             # extract the name of the axis to be averaged
             axisName = axisNames.pop(0)
             newAxes = self.axes.copy()
@@ -209,10 +211,12 @@ class Variable(object) :
             del newAxes[axisName]
             if axisName == 'level' and 'surfacePressure' in self.metadata :
                 self.metadata['thickness'] = statistics.sp2thck(self)
+            if axisName == 'level' and 'oceanDepth' in self.metadata :
+                self.metadata['thickness'] = statistics.od2thck(self)
             if axisName == 'level' and 'thickness' in self.metadata :
                 return Variable(
                             data = np.nansum(self.data*self.thickness.data,
-                                    axis=axisIndex)/9.81,
+                                    axis=axisIndex),
                             axes = newAxes,
                             metadata = newMetadata 
                         ).averager(axisNames)
@@ -247,7 +251,7 @@ class Variable(object) :
                             data = np.nanmean(self.data*weights[weightSlice]/np.nanmean(weights),\
                                     axis=axisIndex),
                             axes = newAxes,
-                            metadata = self.metadata.copy()
+                            metadata = newMetadata
                         ).averager(axisNames)
         # no axes left to average : return the result
         else :
@@ -492,7 +496,6 @@ setattr(Variable, 'abs', absolute)
 
 def _get_sp(self) :
     return self.metadata['surfacePressure']
-
 def _set_sp(self, sp) :
     self.metadata['surfacePressure'] = sp
     # this would give the user the option not to mask underground levels... not so useful
@@ -506,14 +509,30 @@ def _set_sp(self, sp) :
         standUp = [None] + [slice(None)]*len(sp.shape)
         lieDown = [slice(None)] + [None]*len(sp.shape)
     self.data[self.surfacePressure.data[standUp] < self.levs[lieDown]*100] = np.nan
-
 def _del_sp(self) :
     del self.metadata['surfacePressure']
-
 sp = property(_get_sp, _set_sp, _del_sp)
 setattr(Variable, 'surfacePressure', sp)
 
-    
+def _get_od(self) :
+    return self.metadata['oceanDepth']
+def _set_od(self, od) :
+    self.metadata['oceanDepth'] = od
+    standUp = []
+    lieDown = []
+    if 'time' in self.axes :
+        # unlike pressure, depth is constant in time
+        standUp = [None, None] + [slice(None)]*(len(self.oceanDepth.shape)-1)
+        lieDown = [None, slice(None)] + [None]*(len(self.oceanDepth.shape)-1)
+    else :
+        standUp = [None] + [slice(None)]*len(od.shape)
+        lieDown = [slice(None)] + [None]*len(od.shape)
+    self.data[self.oceanDepth.data[standUp] < self.levs[lieDown]] = np.nan
+def _del_od(self) :
+    del self.metadata['oceanDepth']
+od = property(_get_od, _set_od, _del_od)
+setattr(Variable, 'oceanDepth', od)
+
 # import Variable methods from other python files
 setattr(Variable, 'quiver', graphics.quiver)
 setattr(Variable, 'streamplot', graphics.streamplot)
