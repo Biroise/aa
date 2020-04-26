@@ -259,7 +259,7 @@ class Variable(object) :
 
     def censor_nans(self, ratio=1./3) :
         if 'maskedFraction' in self.metadata :
-            self.data[self.metadata['maskedFraction'] > ratio] = np.nan
+            self.data[self.metadata['maskedFraction'].data > ratio] = np.nan
     
     basemap = property(graphics._get_basemap, graphics._set_basemap)
     minimap = property(graphics._get_minimap, graphics._set_minimap)
