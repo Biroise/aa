@@ -238,7 +238,7 @@ class Variable(object) :
                 # if there has already been some averaging going on involving nans
                 elif 'maskedFraction' in self.metadata :
                         newMetadata['maskedFraction'] = Variable(
-                                data = self.metadata['maskedFraction'].mean(axisIndex),
+                                data = self.metadata['maskedFraction'].data.mean(axisIndex),
                                 axes = newAxes)
                 # if you average first along the horizontal and then the vertical
                 # and hope to mask underground levels, the script will fail (as it should)
@@ -500,8 +500,6 @@ def _set_sp(self, sp) :
     self.metadata['surfacePressure'] = sp
     # this would give the user the option not to mask underground levels... not so useful
     #self.metadata['secretPressure'] = self.surfacePressure
-    standUp = []
-    lieDown = []
     if 'time' in self.axes :
         standUp = [slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1)
         lieDown = [None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1)
@@ -518,8 +516,6 @@ def _get_od(self) :
     return self.metadata['oceanDepth']
 def _set_od(self, od) :
     self.metadata['oceanDepth'] = od
-    standUp = []
-    lieDown = []
     if 'time' in self.axes :
         # unlike pressure, depth is constant in time
         standUp = [None, None] + [slice(None)]*(len(self.oceanDepth.shape)-1)
