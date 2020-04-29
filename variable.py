@@ -363,54 +363,25 @@ def yearly(self) :
             datetime(year, 1, 1) for year in years])
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
+    if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
+            self.metadata['maskedFraction'] = Variable(
+                    data = np.isnan(self.data),
+                    axes = self.axes)
+            newMetadata['maskedFraction'] = Variable(
+                    data = np.empty(newAxes.shape),
+                    axes = newAxes)
+            newMetadata['maskedFraction'].data[:] = np.nan
     for idx, year in enumerate(years) :
         assert self.axes.keys()[0] == 'time'
-        newData[idx] = np.nanmean(self.data[YEARS == year], axis=0)
+        mask = YEARS == year
+        newData[idx] = np.nanmean(self.data[mask], axis=0)
+        if 'maskedFraction' in self.metadata :
+            newMetadata['maskedFraction'].data[idx] = self.metadata['maskedFraction'].data[mask].mean(0)
     return Variable(
             data = newData,
             axes = newAxes,
             metadata = self.metadata.copy())
 setattr(Variable, 'yearly', yearly)
-    
-"""
-@property
-def monthly(self) :
-    from datetime import datetime
-    yearMonths = [datetime(year, month, 1)
-            for year in range(self.dts[0].year, self.dts[-1].year + 1)
-            for month in range(1, 13)]
-    # array containing each time step's year
-    YEARS = self.dt.years
-    # array containing each time step's month
-    MONTHS = self.dt.months
-    # adjust first months
-    while yearMonths[0].month != self.dts[0].month :
-        del yearMonths[0]
-    # adjust last months
-    while yearMonths[-1].month != self.dts[-1].month :
-        del yearMonths[-1]
-    newAxes = self.axes.copy()
-    from axis import TimeAxis
-    newAxes['time'] = TimeAxis(yearMonths)
-    newData = np.empty(newAxes.shape)
-    newData[:] = np.nan
-    for idx, yearMonth in enumerate(yearMonths) :
-        maskSlice = []
-        for axis in newAxes :
-            if axis == 'time' :
-                maskSlice.append(
-                        np.logical_and(
-                                YEARS == yearMonth.year,
-                                MONTHS == yearMonth.month))
-            else : 
-                maskSlice.append(slice(None))
-        newData[idx] = np.nanmean(self.data[maskSlice], 0)
-    return Variable(
-            data = newData,
-            axes = newAxes,
-            metadata = self.metadata.copy())
-setattr(Variable, 'monthly', monthly)
-"""
     
 @property
 def monthly(self) :
@@ -429,15 +400,29 @@ def monthly(self) :
     newAxes['time'] = TimeAxis(yearMonths)
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
+    # dump companion variables
+    newMetadata = {key:value for key, value in self.metadata.iteritems()
+            if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
+    # check for nans and the prior existence of maskedFraction
+    if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
+            self.metadata['maskedFraction'] = Variable(
+                    data = np.isnan(self.data),
+                    axes = self.axes)
+            newMetadata['maskedFraction'] = Variable(
+                    data = np.empty(newAxes.shape),
+                    axes = newAxes)
+            newMetadata['maskedFraction'].data[:] = np.nan
     for idx, yearMonth in enumerate(yearMonths) :
         mask = np.logical_and(
                         YEARS == yearMonth.year,
                         MONTHS == yearMonth.month)
         newData[idx] = np.nanmean(self.data[mask], 0)
+        if 'maskedFraction' in self.metadata :
+            newMetadata['maskedFraction'].data[idx] = self.metadata['maskedFraction'].data[mask].mean(0)
     return Variable(
             data = newData,
             axes = newAxes,
-            metadata = self.metadata.copy())
+            metadata = newMetadata)
 setattr(Variable, 'monthly', monthly)
     
 @property
