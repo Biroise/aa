@@ -26,7 +26,12 @@ class Variable(object) :
                 item = (item,)
         newData = self.data[item].copy()
         newAxes = self.axes.copy()
-        newMetadata = self.metadata.copy()
+        newMetadata = {}
+        for key, target in self.metadata.iteritems() :
+            if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
+                newMetadata[key] = target[item]
+            else :
+                newMetadata[key] = target
         # loop through axes in their correct order
         # and match axis with a sub-item
         for axisIndex, axis in enumerate(self.axes) :
@@ -363,6 +368,9 @@ def yearly(self) :
             datetime(year, 1, 1) for year in years])
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
+    # dump companion variables
+    newMetadata = {key:value for key, value in self.metadata.iteritems()
+            if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
     if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
             self.metadata['maskedFraction'] = Variable(
                     data = np.isnan(self.data),
@@ -380,7 +388,7 @@ def yearly(self) :
     return Variable(
             data = newData,
             axes = newAxes,
-            metadata = self.metadata.copy())
+            metadata = newMetadata)
 setattr(Variable, 'yearly', yearly)
     
 @property
