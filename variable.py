@@ -347,6 +347,12 @@ def wrap_extractor(monthNumbers) :
                 maskSlice.append(mask)
             else : 
                 maskSlice.append(slice(None))
+        newMetadata = {}
+        for key, target in self.metadata.iteritems() :
+            if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
+                newMetadata[key] = wrap_extractor(monthNumbers)(target)
+            else :
+                newMetadata[key] = target
         return Variable(
                 data=self.data[maskSlice],
                 axes=newAxes,
