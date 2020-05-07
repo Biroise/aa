@@ -97,16 +97,26 @@ class File(aa.File) :
             # e.g. f.message(lastIndex) returns the last message
             # indices start at 1 meaning that lastIndex is also the
             # number of messages in the file
-            self.axes['time'] = aa.TimeAxis(
-                    np.array([firstInstant + timeIndex*timeStep
-                        for timeIndex in range(lastIndex/linesPerInstant)]), None)
-            # check consistency
+            # for consistency checks
             gribLine = rawFile.message(lastIndex)
             lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
                         gribLine.hour, gribLine.minute, gribLine.second)
-            if lastInstant != self.dts[-1] or \
-                    lastIndex % linesPerInstant != 0 :
-                raise Exception, "Error in time axis"
+            if timeStep.days >= 30 :
+                self.axes['time'] = aa.TimeAxis(
+                        np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
+                                (firstInstant.month + timeIndex-1)%12+1, 1)
+                            for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                if lastInstant.year != self.dts[-1].year or \
+                        lastInstant.month != self.dts[-1].month or \
+                        lastIndex % linesPerInstant != 0 :
+                    raise Exception, "Error in time axis"
+            else :
+                self.axes['time'] = aa.TimeAxis(
+                        np.array([firstInstant + timeIndex*timeStep
+                            for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                if lastInstant != self.dts[-1] or \
+                        lastIndex % linesPerInstant != 0 :
+                    raise Exception, "Error in time axis"
         rawFile.rewind()
         #############
         # VARIABLES #
