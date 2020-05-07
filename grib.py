@@ -19,22 +19,14 @@ class File(aa.File) :
         gribLine = rawFile.readline()
         firstInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
                     gribLine.hour, gribLine.minute, gribLine.second)
-        ###################
-        # HORIZONTAL AXES #
-        ###################
-        lats, lons = gribLine.latlons()
-        if lats[0, 0] == lats[0, 1] :
-            self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
-            self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
-        else :
-            self.axes['latitude'] = aa.Meridian(lats[0, :], 'degrees')
-            self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
-        #################
-        # VERTICAL AXIS #
-        #################
+
+        ################
+        # SURVEY SHAPE #
+        ################
         # sometimes there are several types of level
         # 2D data is followed by 3D data e.g. jra25
         variablesLevels = {}                    # variable - level type - level
+        variablesEnsembleSize = {}
         variablesMetaData = {}
         # loop through the variables and levels of the first time step
         # default : grib has a time axis
@@ -55,29 +47,28 @@ class File(aa.File) :
             if gribLine.typeOfLevel not in \
                     variablesLevels[gribLine.shortName] :
                     # create a list that will contain the level labels
-                variablesLevels[gribLine.shortName][gribLine.typeOfLevel] = []
-            # append the level label to the variable / level type
-            variablesLevels[gribLine.shortName][gribLine.typeOfLevel]\
-                    .append(gribLine.level)
+                variablesLevels[gribLine.shortName][gribLine.typeOfLevel] = [gribLine.level]
+                # set the ensemble member counter to 1
+                variablesEnsembleSize[gribLine.shortName] = 1
+            # level type already exists :
+            else :
+                # is this the second time this level label is met ?
+                if variablesLevels[gribLine.shortName][gribLine.typeOfLevel][-1] == gribLine.level :
+                    # increment one ensemble member
+                    variablesEnsembleSize[gribLine.shortName] += 1
+                    # assume that it is square : levType*lev*mbr (easy to fix if needed)
+                else :
+                    # append the level label to the variable / level type
+                    variablesLevels[gribLine.shortName][gribLine.typeOfLevel]\
+                            .append(gribLine.level)
+                    # set the ensemble member counter to 1
+                    variablesEnsembleSize[gribLine.shortName] = 1
             # move to the next line
             gribLine = rawFile.readline()
             if gribLine == None :
                 timeDimension = False
                 break
-        # find the longest vertical axis
-        maxLevelNumber = 0
-        for variableName, levelKinds in variablesLevels.iteritems() :
-            for levelType, levels in levelKinds.iteritems() :
-                # does levels look like a proper axis ?
-                if len(levels) > 1 :
-                    variablesLevels[variableName][levelType] \
-                            = aa.Vertical(np.array(levels), levelType)
-                # is levels longer than the previous longest axis ?
-                if len(levels) > maxLevelNumber :
-                    maxLevelNumber = len(levels)
-                    mainLevels = aa.Vertical(np.array(levels), levelType)
-        # the longest vertical axis gets to be the file's vertical axis
-        self.axes['level'] = mainLevels
+
         if timeDimension :
             #############
             # TIME AXIS #
@@ -104,10 +95,57 @@ class File(aa.File) :
             gribLine = rawFile.message(lastIndex)
             lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
                         gribLine.hour, gribLine.minute, gribLine.second)
+            if timeStep.days >= 30 :
+                self.axes['time'] = aa.TimeAxis(
+                        np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
+                                (firstInstant.month + timeIndex-1)%12+1, 1)
+                            for timeIndex in range(lastIndex/linesPerInstant)]), None)
             if lastInstant != self.dts[-1] or \
                     lastIndex % linesPerInstant != 0 :
                 raise Exception, "Error in time axis"
         rawFile.rewind()
+
+        ############
+        # VERTICAL #
+        ############
+        # find the longest vertical axis
+        maxLevelNumber = 0
+        for variableName, levelKinds in variablesLevels.iteritems() :
+            for levelType, levels in levelKinds.iteritems() :
+                # does levels look like a proper axis ?
+                if len(levels) > 1 :
+                    variablesLevels[variableName][levelType] \
+                            = aa.Vertical(np.array(levels), levelType)
+                # is levels longer than the previous longest axis ?
+                if len(levels) > maxLevelNumber :
+                    maxLevelNumber = len(levels)
+                    mainLevels = aa.Vertical(np.array(levels), levelType)
+        # find the longest ensemble
+        self.axes['level'] = mainLevels
+        # the longest vertical axis gets to be the file's vertical axis
+
+        ############
+        # ENSEMBLE #
+        ############
+        maxEnsembleSize = 1
+        for variableName, ensembleSize in variablesEnsembleSize.iteritems() :
+            if ensembleSize > maxEnsembleSize :
+                maxEnsembleSize = ensembleSize
+        if maxEnsembleSize > 1 :
+            self.axes['member'] = aa.Axis(np.arange(maxEnsembleSize))
+
+        ###################
+        # HORIZONTAL AXES #
+        ###################
+        # assumes last grib messages has a spatial dimensions
+        lats, lons = gribLine.latlons()
+        if lats[0, 0] == lats[0, 1] :
+            self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
+            self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
+        else :
+            self.axes['latitude'] = aa.Meridian(lats[0, :], 'degrees')
+            self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
+
         #############
         # VARIABLES #
         #############
@@ -120,7 +158,11 @@ class File(aa.File) :
                     axes['time'] = self.axes['time']
                 else :
                     conditions['time'] = firstInstant
-                variableLabel = variableName + '_' + levelType
+                # do we need to add a suffix to the variable's name ?
+                if len(levelKinds) > 1 :
+                    variableLabel = variableName + '_' + levelType
+                else : 
+                    variableLabel = variableName
                 # does this variable have a vertical extension ?
                 # it may not be the file's vertical axis
                 if len(verticalAxis) > 1 :
@@ -133,9 +175,11 @@ class File(aa.File) :
                     # flat level i.e. 2D data
                     # the condition is a list to be iterable
                     conditions['level'] = verticalAxis
-                # no ambiguity
-                if len(levelKinds) == 1 :
-                    variableLabel = variableName
+                # is this variable an ensemble ?
+                if variablesEnsembleSize[variableName] > 1 :
+                    axes['member'] = aa.Axis(np.arange(variablesEnsembleSize[variableName]))
+                else :
+                    conditions['member'] = [0]
                 axes['latitude'] = self.axes['latitude']
                 axes['longitude'] = self.axes['longitude']
                 self.variables[variableLabel] = \
@@ -314,9 +358,9 @@ class Variable(aa.Variable) :
             newConditions = self.conditions.copy()
             # scalar conditions only (input for the gribIndex)
             subConditions = self.conditions.copy()
-            ################
-            # TIME & LEVEL #
-            ################
+            #########################
+            # TIME & LEVEL & MEMBER #
+            #########################
             if 'time' not in self.conditions :
                 newConditions['time'] = self.axes['time'].data
             else :
@@ -332,6 +376,12 @@ class Variable(aa.Variable) :
             # if not, that means the user wants all available levels
             if 'level' not in self.conditions :
                 newConditions['level'] = self.axes['level'].data
+            # same reasoning with ensemble members
+            if 'member' not in self.conditions :
+                newConditions['member'] = self.axes['member'].data
+            else :
+                # gribIndex won't want lists of ensemble members
+                del subConditions['member']
             ########################
             # LATITUDE & LONGITUDE #
             ########################
@@ -376,8 +426,8 @@ class Variable(aa.Variable) :
                 shape = shape + (len(axis),)
             # build the output numpy array
             self._data = np.empty(shape, dtype=float)
-            # flatten time and level dimensions
-            # that's in case there's neither time nor level dimension
+            # flatten time and level and ensemble dimensions
+            # that's in case there's neither of either
             self._data.shape = (-1,) + horizontalShape
             # load the grib index
             gribIndex = pygrib.index(self.fileName+'.idx')
@@ -392,17 +442,18 @@ class Variable(aa.Variable) :
                         np.asscalar(np.array(level))
                         # converts numpy types to standard types
                         # standard types are converted to numpy
-                    # normally, there should be only one line
-                    # that answers our query
-                    gribLine = gribIndex(**subConditions)[0]
-                    if twistedLongitudes :
-                        self._data[lineIndex, ..., slice1] = \
-                            gribLine.values[mask]
-                        self._data[lineIndex, ..., slice2] = \
-                            gribLine.values[secondMask]
-                    else :
-                        self._data[lineIndex] = gribLine.values[mask]
-                    lineIndex += 1
+                    # normally, there should be as many lines
+                    # that answer our query as there are ensemble members
+                    gribLines = gribIndex(**subConditions)
+                    for member in newConditions['member'] :
+                        if twistedLongitudes :
+                            self._data[lineIndex, ..., slice1] = \
+                                gribLines[member].values[mask]
+                            self._data[lineIndex, ..., slice2] = \
+                                gribLines[member].values[secondMask]
+                        else :
+                            self._data[lineIndex] = gribLines[member].values[mask]
+                        lineIndex += 1
             gribIndex.close()
             self._data.shape = shape
         return self._data
