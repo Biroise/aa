@@ -26,7 +26,12 @@ class Variable(object) :
                 item = (item,)
         newData = self.data[item].copy()
         newAxes = self.axes.copy()
-        newMetadata = self.metadata.copy()
+        newMetadata = {}
+        for key, target in self.metadata.iteritems() :
+            if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
+                newMetadata[key] = target[item]
+            else :
+                newMetadata[key] = target
         # loop through axes in their correct order
         # and match axis with a sub-item
         for axisIndex, axis in enumerate(self.axes) :
@@ -238,7 +243,7 @@ class Variable(object) :
                 # if there has already been some averaging going on involving nans
                 elif 'maskedFraction' in self.metadata :
                         newMetadata['maskedFraction'] = Variable(
-                                data = self.metadata['maskedFraction'].mean(axisIndex),
+                                data = self.metadata['maskedFraction'].data.mean(axisIndex),
                                 axes = newAxes)
                 # if you average first along the horizontal and then the vertical
                 # and hope to mask underground levels, the script will fail (as it should)
@@ -259,7 +264,7 @@ class Variable(object) :
 
     def censor_nans(self, ratio=1./3) :
         if 'maskedFraction' in self.metadata :
-            self.data[self.metadata['maskedFraction'] > ratio] = np.nan
+            self.data[self.metadata['maskedFraction'].data > ratio] = np.nan
     
     basemap = property(graphics._get_basemap, graphics._set_basemap)
     minimap = property(graphics._get_minimap, graphics._set_minimap)
@@ -342,6 +347,12 @@ def wrap_extractor(monthNumbers) :
                 maskSlice.append(mask)
             else : 
                 maskSlice.append(slice(None))
+        newMetadata = {}
+        for key, target in self.metadata.iteritems() :
+            if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
+                newMetadata[key] = wrap_extractor(monthNumbers)(target)
+            else :
+                newMetadata[key] = target
         return Variable(
                 data=self.data[maskSlice],
                 axes=newAxes,
@@ -363,54 +374,28 @@ def yearly(self) :
             datetime(year, 1, 1) for year in years])
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
+    # dump companion variables
+    newMetadata = {key:value for key, value in self.metadata.iteritems()
+            if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
+    if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
+            self.metadata['maskedFraction'] = Variable(
+                    data = np.isnan(self.data),
+                    axes = self.axes)
+            newMetadata['maskedFraction'] = Variable(
+                    data = np.empty(newAxes.shape),
+                    axes = newAxes)
+            newMetadata['maskedFraction'].data[:] = np.nan
     for idx, year in enumerate(years) :
         assert self.axes.keys()[0] == 'time'
-        newData[idx] = np.nanmean(self.data[YEARS == year], axis=0)
+        mask = YEARS == year
+        newData[idx] = np.nanmean(self.data[mask], axis=0)
+        if 'maskedFraction' in self.metadata :
+            newMetadata['maskedFraction'].data[idx] = self.metadata['maskedFraction'].data[mask].mean(0)
     return Variable(
             data = newData,
             axes = newAxes,
-            metadata = self.metadata.copy())
+            metadata = newMetadata)
 setattr(Variable, 'yearly', yearly)
-    
-"""
-@property
-def monthly(self) :
-    from datetime import datetime
-    yearMonths = [datetime(year, month, 1)
-            for year in range(self.dts[0].year, self.dts[-1].year + 1)
-            for month in range(1, 13)]
-    # array containing each time step's year
-    YEARS = self.dt.years
-    # array containing each time step's month
-    MONTHS = self.dt.months
-    # adjust first months
-    while yearMonths[0].month != self.dts[0].month :
-        del yearMonths[0]
-    # adjust last months
-    while yearMonths[-1].month != self.dts[-1].month :
-        del yearMonths[-1]
-    newAxes = self.axes.copy()
-    from axis import TimeAxis
-    newAxes['time'] = TimeAxis(yearMonths)
-    newData = np.empty(newAxes.shape)
-    newData[:] = np.nan
-    for idx, yearMonth in enumerate(yearMonths) :
-        maskSlice = []
-        for axis in newAxes :
-            if axis == 'time' :
-                maskSlice.append(
-                        np.logical_and(
-                                YEARS == yearMonth.year,
-                                MONTHS == yearMonth.month))
-            else : 
-                maskSlice.append(slice(None))
-        newData[idx] = np.nanmean(self.data[maskSlice], 0)
-    return Variable(
-            data = newData,
-            axes = newAxes,
-            metadata = self.metadata.copy())
-setattr(Variable, 'monthly', monthly)
-"""
     
 @property
 def monthly(self) :
@@ -429,15 +414,29 @@ def monthly(self) :
     newAxes['time'] = TimeAxis(yearMonths)
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
+    # dump companion variables
+    newMetadata = {key:value for key, value in self.metadata.iteritems()
+            if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
+    # check for nans and the prior existence of maskedFraction
+    if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
+            self.metadata['maskedFraction'] = Variable(
+                    data = np.isnan(self.data),
+                    axes = self.axes)
+            newMetadata['maskedFraction'] = Variable(
+                    data = np.empty(newAxes.shape),
+                    axes = newAxes)
+            newMetadata['maskedFraction'].data[:] = np.nan
     for idx, yearMonth in enumerate(yearMonths) :
         mask = np.logical_and(
                         YEARS == yearMonth.year,
                         MONTHS == yearMonth.month)
         newData[idx] = np.nanmean(self.data[mask], 0)
+        if 'maskedFraction' in self.metadata :
+            newMetadata['maskedFraction'].data[idx] = self.metadata['maskedFraction'].data[mask].mean(0)
     return Variable(
             data = newData,
             axes = newAxes,
-            metadata = self.metadata.copy())
+            metadata = newMetadata)
 setattr(Variable, 'monthly', monthly)
     
 @property
@@ -500,8 +499,6 @@ def _set_sp(self, sp) :
     self.metadata['surfacePressure'] = sp
     # this would give the user the option not to mask underground levels... not so useful
     #self.metadata['secretPressure'] = self.surfacePressure
-    standUp = []
-    lieDown = []
     if 'time' in self.axes :
         standUp = [slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1)
         lieDown = [None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1)
@@ -518,8 +515,6 @@ def _get_od(self) :
     return self.metadata['oceanDepth']
 def _set_od(self, od) :
     self.metadata['oceanDepth'] = od
-    standUp = []
-    lieDown = []
     if 'time' in self.axes :
         # unlike pressure, depth is constant in time
         standUp = [None, None] + [slice(None)]*(len(self.oceanDepth.shape)-1)

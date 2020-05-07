@@ -18,10 +18,10 @@ class Axes(OrderedDict) :
         'time':'time', 'dt':'time', 't':'time',
         'Time':'time', 'TIME':'time',
         'initial_time0_hours':'time',
-        'x':'longitude', 'y':'latitude', 'z':'level',
+        'x':'longitude', 'y':'latitude', 'z':'level', 'm':'member',
         'level0':'level', 'PRES':'level'}
     shortcuts = {'lats':'latitude', 'lons':'longitude',
-        'levs':'level', 'dts':'time'}
+        'levs':'level', 'dts':'time', 'mbr':'member'}
     ncStandard = {'latitude':'lat', 'longitude':'lon',
             'level':'lev', 'time':'time'}
     
