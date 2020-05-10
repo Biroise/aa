@@ -216,15 +216,20 @@ class TimeAxis(Axis) :
             # unit definition is conventionally :
             # seconds/hours/days since YYYY-MM-DD HH
             words = units.split()
-            if words[1] != 'since' :
-                print "Unconventional definition of time units"
-            units = words[0]
-            date = [int(bits) for bits in words[2].split('-')]
-            epoch = datetime(date[0], date[1], date[2])
-            self.data = np.array(
-                [epoch + timedelta(**{units: np.asscalar(offset)})
-                for offset in self.data])
-            self.units = None
+            #if words[1] != 'since' :
+            if len(words) < 3 :
+                #print "Unconventional definition of time units"
+                if words[0].startswith('year') :
+                    self.data = np.array([datetime(int(year), 1, 1) for year in self.data])
+                    self.units = None
+            elif words[1] == 'since' :
+                units = words[0]
+                date = [int(bits) for bits in words[2].split('-')]
+                epoch = datetime(date[0], date[1], date[2])
+                self.data = np.array(
+                    [epoch + timedelta(**{units: np.asscalar(offset)})
+                    for offset in self.data])
+                self.units = None
     
     @property
     def step(self) :
