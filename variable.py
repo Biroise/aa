@@ -10,7 +10,7 @@ class Variable(object) :
     def __init__(self, data=None, axes=Axes(), metadata={}) :
         self.axes = axes
         self.metadata = metadata
-        if type(data) = list :
+        if type(data) == list :
             self._data = np.array(data)
         elif type(data) != type(None) :
             self._data = data
