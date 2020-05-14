@@ -76,6 +76,8 @@ class Variable(object) :
                 secondSlice = [slice(None)]*len(output.shape)
                 firstSlice[output.axes.index(axisName)] = 0
                 secondSlice[output.axes.index(axisName)] = 1
+                firstSlice = tuple(firstSlice)
+                secondSlice = tuple(secondSlice)
                 # linear interpolation !
                 try :
                     output = \
@@ -255,7 +257,7 @@ class Variable(object) :
                 reverseSlice[axisIndex] = None
                 # a modifier : on veut garder les nans des slices vides
                 return Variable(
-                            data = np.nanmean(self.data*weights[weightSlice]/np.nanmean(weights),\
+                            data = np.nanmean(self.data*weights[tuple(weightSlice)]/np.nanmean(weights),\
                                     axis=axisIndex),
                             axes = newAxes,
                             metadata = newMetadata
@@ -502,11 +504,11 @@ def _set_sp(self, sp) :
     # this would give the user the option not to mask underground levels... not so useful
     #self.metadata['secretPressure'] = self.surfacePressure
     if 'time' in self.axes :
-        standUp = [slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1)
-        lieDown = [None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1)
+        standUp = tuple([slice(None), None] + [slice(None)]*(len(self.surfacePressure.shape)-1))
+        lieDown = tuple([None, slice(None)] + [None]*(len(self.surfacePressure.shape)-1))
     else :
-        standUp = [None] + [slice(None)]*len(sp.shape)
-        lieDown = [slice(None)] + [None]*len(sp.shape)
+        standUp = tuple([None] + [slice(None)]*len(sp.shape))
+        lieDown = tuple([slice(None)] + [None]*len(sp.shape))
     self.data[self.surfacePressure.data[standUp] < self.levs[lieDown]*100] = np.nan
 def _del_sp(self) :
     del self.metadata['surfacePressure']
@@ -519,11 +521,11 @@ def _set_od(self, od) :
     self.metadata['oceanDepth'] = od
     if 'time' in self.axes :
         # unlike pressure, depth is constant in time
-        standUp = [None, None] + [slice(None)]*(len(self.oceanDepth.shape)-1)
-        lieDown = [None, slice(None)] + [None]*(len(self.oceanDepth.shape)-1)
+        standUp = tuple([None, None] + [slice(None)]*(len(self.oceanDepth.shape)-1))
+        lieDown = tuple([None, slice(None)] + [None]*(len(self.oceanDepth.shape)-1))
     else :
-        standUp = [None] + [slice(None)]*len(od.shape)
-        lieDown = [slice(None)] + [None]*len(od.shape)
+        standUp = tuple([None] + [slice(None)]*len(od.shape))
+        lieDown = tuple([slice(None)] + [None]*len(od.shape))
     self.data[self.oceanDepth.data[standUp] < self.levs[lieDown]] = np.nan
 def _del_od(self) :
     del self.metadata['oceanDepth']
