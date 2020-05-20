@@ -97,6 +97,11 @@ class File(aa.File) :
                         np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
                                 (firstInstant.month + timeIndex-1)%12+1, 1)
                             for timeIndex in range(lastIndex/linesPerInstant)]), None)
+            else :
+                self.axes['time'] = aa.TimeAxis(
+                        np.array([firstInstant + timeIndex*timeStep
+                        for timeIndex in range(lastIndex/linesPerInstant)]), None)
+
             if lastInstant != self.dts[-1] or \
                     lastIndex % linesPerInstant != 0 :
                 raise Exception, "Error in time axis"
