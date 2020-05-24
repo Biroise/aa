@@ -93,18 +93,25 @@ class File(aa.File) :
             lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
                         gribLine.hour, gribLine.minute, gribLine.second)
             if timeStep.days >= 30 :
-                self.axes['time'] = aa.TimeAxis(
-                        np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
-                                (firstInstant.month + timeIndex-1)%12+1, 1)
-                            for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                if gribLine.stepType == 'avgfc' :
+                    forecasted = firstInstant + aa.timedelta(hours = int(gribLine.stepRange))
+                    self.axes['time'] = aa.TimeAxis(
+                            np.array([aa.datetime(forecasted.year + (forecasted.month + timeIndex-1)/12,
+                                    (forecasted.month + timeIndex-1)%12+1, 1) - aa.timedelta(hours = int(gribLine.stepRange))
+                                for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                else :
+                    self.axes['time'] = aa.TimeAxis(
+                            np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
+                                    (firstInstant.month + timeIndex-1)%12+1, 1)
+                                for timeIndex in range(lastIndex/linesPerInstant)]), None)
             else :
                 self.axes['time'] = aa.TimeAxis(
                         np.array([firstInstant + timeIndex*timeStep
                         for timeIndex in range(lastIndex/linesPerInstant)]), None)
 
-            if lastInstant != self.dts[-1] or \
-                    lastIndex % linesPerInstant != 0 :
-                raise Exception, "Error in time axis"
+                if lastInstant != self.dts[-1] or \
+                        lastIndex % linesPerInstant != 0 :
+                    raise Exception, "Error in time axis"
         rawFile.rewind()
 
         ############
