@@ -94,14 +94,13 @@ class File(aa.File) :
                         gribLine.hour, gribLine.minute, gribLine.second)
             if timeStep.days >= 30 :
                 self.axes['time'] = aa.TimeAxis(
-                        np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
+                        np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)//12,
                                 (firstInstant.month + timeIndex-1)%12+1, 1)
-                            for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                            for timeIndex in range(lastIndex//linesPerInstant)]), None)
             else :
                 self.axes['time'] = aa.TimeAxis(
                         np.array([firstInstant + timeIndex*timeStep
-                        for timeIndex in range(lastIndex/linesPerInstant)]), None)
-
+                        for timeIndex in range(lastIndex//linesPerInstant)]), None)
             if lastInstant != self.dts[-1] or \
                     lastIndex % linesPerInstant != 0 :
                 raise Exception, "Error in time axis"
@@ -112,8 +111,8 @@ class File(aa.File) :
         ############
         # find the longest vertical axis
         maxLevelNumber = 0
-        for variableName, levelKinds in variablesLevels.iteritems() :
-            for levelType, levels in levelKinds.iteritems() :
+        for variableName, levelKinds in variablesLevels.items() :
+            for levelType, levels in levelKinds.items() :
                 # does levels look like a proper axis ?
                 if len(levels) > 1 :
                     variablesLevels[variableName][levelType] \
@@ -130,7 +129,7 @@ class File(aa.File) :
         # ENSEMBLE #
         ############
         maxEnsembleSize = 1
-        for variableName, ensembleSize in variablesEnsembleSize.iteritems() :
+        for variableName, ensembleSize in variablesEnsembleSize.items() :
             if ensembleSize > maxEnsembleSize :
                 maxEnsembleSize = ensembleSize
         if maxEnsembleSize > 1 :
@@ -151,8 +150,8 @@ class File(aa.File) :
         #############
         # VARIABLES #
         #############
-        for variableName, levelKinds in variablesLevels.iteritems() :
-            for levelType, verticalAxis in levelKinds.iteritems() :
+        for variableName, levelKinds in variablesLevels.items() :
+            for levelType, verticalAxis in levelKinds.items() :
                 conditions = {'shortName' : variableName.encode('ascii'),
                         'typeOfLevel' : levelType.encode('ascii')}
                 axes = aa.Axes()
@@ -221,7 +220,7 @@ class Variable(aa.Variable) :
     def shape(self) :
         if "_data" not in self.__dict__ :
             dimensions = []
-            for axis in self.axes.values() :
+            for axis in list(self.axes.values()) :
                 dimensions.append(len(axis))
             return tuple(dimensions)    
         else :
@@ -278,7 +277,7 @@ class Variable(aa.Variable) :
     def shape(self) :
         if "_data" not in self.__dict__ :
             dimensions = []
-            for axis in self.axes.values() :
+            for axis in list(self.axes.values()) :
                 dimensions.append(len(axis))
             return tuple(dimensions)    
         else :
@@ -321,7 +320,7 @@ class Variable(aa.Variable) :
             # conditions and axes of the output variable
             newConditions = self.conditions.copy()
             newAxes = self.axes.copy()
-            for axisName, condition in kwargs.iteritems() :
+            for axisName, condition in kwargs.items() :
                 # lat/lon get a special treatment within grib messages (array)
                 if axisName in ['latitude', 'longitude'] :
                     # there may already be restrictions on lat/lon from former calls
@@ -424,7 +423,7 @@ class Variable(aa.Variable) :
             # GET GRIB MESSAGES #
             #####################
             shape = ()
-            for axisName, axis in self.axes.iteritems() :
+            for axisName, axis in self.axes.items() :
                 shape = shape + (len(axis),)
             # build the output numpy array
             self._data = np.empty(shape, dtype=float)

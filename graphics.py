@@ -2,6 +2,9 @@
 import numpy as np
 import numpy.ma as ma
 from matplotlib.colors import Normalize
+# KLUDGE
+import mpl_toolkits
+mpl_toolkits.__path__.append('/usr/local/lib/python2.7/dist-packages/mpl_toolkits/')
 
 def _get_basemap(self) :
     if '_basemap' not in self.__dict__ :
@@ -108,7 +111,7 @@ def _get_minimap(self) :
             else :
                 lats = tuple([self.metadata['latitude']]*2)
         else :
-            print "Warning, default behaviour"
+            print("Warning, default behaviour")
             lats = 70, 70
             #raise NotImplementedError, 'Only longitude profiles are implemented'
         self._minimap = Basemap(
@@ -359,7 +362,8 @@ def plot(self, *args, **kwargs) :
             plt.draw()
             plt.colorbar(graph)
     else :
-        raise Exception, "Variable has too many axes or none"
+        print("Variable has too many axes or none")
+        raise
 
 def quiver(zonal, meridional, nx=25, ny=25, **kwargs) :
     import matplotlib.pyplot as plt

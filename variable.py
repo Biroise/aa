@@ -1,9 +1,9 @@
 
 import numpy as np
-import graphics
-from axis import Axes
+import aa.graphics as graphics
+from aa.axis import Axes
 from collections import OrderedDict
-import statistics
+import aa.statistics as statistics
 
 
 class Variable(object) :
@@ -29,7 +29,7 @@ class Variable(object) :
         newData = self.data[item].copy()
         newAxes = self.axes.copy()
         newMetadata = {}
-        for key, target in self.metadata.iteritems() :
+        for key, target in self.metadata.items() :
             if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
                 newMetadata[key] = target[item]
             else :
@@ -58,14 +58,14 @@ class Variable(object) :
     def __call__(self, **kwargs) :
         # input : {axisName: condition, ...}
         # standardize the axisNames
-        for axisName, condition in kwargs.iteritems() :
+        for axisName, condition in kwargs.items() :
             del kwargs[axisName]
             if type(condition) == tuple :
                 condition = tuple(sorted(condition[:2]))+condition[2:]
             kwargs[Axes.standardize(axisName)] = condition
         output = self.extract_data(**kwargs)
         # do we need to interpolate along an axis ?
-        for axisName, condition in kwargs.iteritems() :
+        for axisName, condition in kwargs.items() :
             # did we ask for a single value for an axis
             # yet still have this axis in the output variable ?
             # this means extract_data returned the neighbouring points
@@ -105,7 +105,7 @@ class Variable(object) :
         #newMetadata = self.metadata.copy()
         # ideally : slice the pressure field as well except! level slice
         # for now let's play it safe
-        newMetadata = {key:value for key, value in self.metadata.iteritems()
+        newMetadata = {key:value for key, value in self.metadata.items()
                 if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
         # slice the maskedFraction exactly the same way
         if 'maskedFraction' in self.metadata :
@@ -119,7 +119,7 @@ class Variable(object) :
             if 'oceanDepth' in self.metadata :
                 newMetadata['oceanDepth'] = self.metadata['oceanDepth'](**kwargs)
         # dispatch the conditions to the axes
-        for axisName, condition in kwargs.iteritems() :
+        for axisName, condition in kwargs.items() :
             item, newAxis = self.axes[axisName](condition)
             # replace the default slice(None) by the item returned by the axis
             slices[axisName] = item
@@ -206,7 +206,7 @@ class Variable(object) :
         # still axes needing averaging
         if len(axisNames) > 0 :
             # copy the metadata (by reference) - no point in copying surface pressure
-            newMetadata = {key:value for key, value in self.metadata.iteritems()
+            newMetadata = {key:value for key, value in self.metadata.items()
                     if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
             # extract the name of the axis to be averaged
             axisName = axisNames.pop(0)
@@ -352,7 +352,7 @@ def wrap_extractor(monthNumbers) :
             else : 
                 maskSlice.append(slice(None))
         newMetadata = {}
-        for key, target in self.metadata.iteritems() :
+        for key, target in self.metadata.items() :
             if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
                 newMetadata[key] = wrap_extractor(monthNumbers)(target)
             else :
@@ -362,7 +362,7 @@ def wrap_extractor(monthNumbers) :
                 axes=newAxes,
                 metadata=self.metadata.copy())
     return extractor
-for periodName, monthNumbers in periods.iteritems() :
+for periodName, monthNumbers in periods.items() :
     setattr(Variable, periodName, wrap_extractor(monthNumbers))
 
 @property
@@ -379,7 +379,7 @@ def yearly(self) :
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
     # dump companion variables
-    newMetadata = {key:value for key, value in self.metadata.iteritems()
+    newMetadata = {key:value for key, value in self.metadata.items()
             if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
     if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
             self.metadata['maskedFraction'] = Variable(
@@ -419,7 +419,7 @@ def monthly(self) :
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
     # dump companion variables
-    newMetadata = {key:value for key, value in self.metadata.iteritems()
+    newMetadata = {key:value for key, value in self.metadata.items()
             if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
     # check for nans and the prior existence of maskedFraction
     if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
@@ -486,7 +486,7 @@ def wrap_smoother(monthNumbers) :
         return Variable(
                 )
     return smoother
-for periodName, monthNumbers in periods.iteritems() :
+for periodName, monthNumbers in periods.items() :
     setattr(Variable, periodName, wrap_smoother(monthNumbers))
 """
 

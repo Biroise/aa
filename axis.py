@@ -63,12 +63,12 @@ class Axes(OrderedDict) :
     
     def copy(self) :
         newAxes = Axes()
-        for axisName, axis in self.iteritems() :
+        for axisName, axis in self.items() :
             newAxes[axisName] = axis.copy()
         return newAxes
 
     def index(self, axisName) :
-        return self.keys().index(Axes.standardize(axisName))
+        return list(self).index(Axes.standardize(axisName))
 
     @property
     def shape(self) :
@@ -147,7 +147,7 @@ class Axis(object) :
                             return slice_.start, None
                         # BUG : may return a single point if it is just outside the bounds
                         else :
-                            print 'conditions out of bound'
+                            print('conditions out of bound')
                             raise Exception
                             
                 return slice_, axis
@@ -164,7 +164,7 @@ class Axis(object) :
         mask = np.logical_and(lower_mask, upper_mask)
         #case where both conditions are out of bounds
         if not lower_mask.any() or not upper_mask.any() :
-            print 'conditions out of bound'
+            print('conditions out of bound')
             raise Exception
         # now extract the sub-axis corresponding to the condition
         return (slice(np.argmax(mask),
@@ -218,7 +218,7 @@ class TimeAxis(Axis) :
             words = units.split()
             #if words[1] != 'since' :
             if len(words) < 3 :
-                #print "Unconventional definition of time units"
+                #print("Unconventional definition of time units")
                 if words[0].startswith('year') :
                     self.data = np.array([datetime(int(year), 1, 1) for year in self.data])
                     self.units = None

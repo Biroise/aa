@@ -4,9 +4,9 @@ Initialisation code for package aa
 Contains the critical 'open' function
 """
 
-from axis import *
-from file import File
-from variable import Variable
+from aa.axis import *
+from aa.file import File
+from aa.variable import Variable
 
 import numpy as np
 
@@ -53,9 +53,9 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
             from aa import grib
             file_ = grib.File(filePath)
     if returnSingleVariable and len(file_.variables) == 1 :
-        #print "WARNING : output is the only variable this file contains"
-        variable = file_.variables.values()[0]
-        variable.metadata['shortName'] = file_.variables.keys()[0]
+        #print("WARNING : output is the only variable this file contains")
+        variable = list(file_.variables.values())[0]
+        variable.metadata['shortName'] = list(file_.variables.keys())[0]
         return variable
     else :
         return file_
@@ -74,5 +74,5 @@ def cos(angleInDegrees) :
 def sin(angleInDegrees) :
     return np.sin(angleInDegrees*np.pi/180.0)
 
-from load import *
+from aa.load import *
 

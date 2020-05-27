@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 
 def cycle(self, harmonics=3) :
-    dts = self.dt.total_seconds/(3600*24)
+    dts = self.dt.total_seconds*1./(3600*24)
     spatialize = [slice(None)] + [None]*len(self.shape[1:])
     temporalize = [None] + [slice(None)]*len(self.shape[1:])
     output = self.zeros()
@@ -290,7 +290,7 @@ def eof(variable) :
     wgts = np.cos(variable.lats*np.pi/180)**0.5
     solver = Eof(variable.data, weights = wgts[:, None])
     eof1 = solver.eofs(eofscaling=2, neofs=1)
-    print solver.varianceFraction(neigs=1)[0]*100, '%'
+    print(solver.varianceFraction(neigs=1)[0]*100, '%')
     output = variable[0].empty()
     output.data = eof1[0]
     return output
@@ -310,7 +310,7 @@ def smooth(variable, window) :
     #mask[int(window/2)] = 1    
     mask /= window*1.0
     newAxes = Axes()
-    newAxes['time'] = TimeAxis(variable.dts[int(window/2):-int(window/2)])
+    newAxes['time'] = TimeAxis(variable.dts[int(window//2):-int(window//2)])
     return Variable(
             data = np.convolve(variable.data, mask, mode='valid'),
             axes = newAxes,

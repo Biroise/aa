@@ -1,6 +1,6 @@
 
 import numpy as np
-from axis import Axes
+from aa.axis import Axes
 
 class File(object) :
     def __init__(self, variables=None, axes=None) :

@@ -236,12 +236,12 @@ class Cyclone :
     def _get_speeds(self) :
         self._zonals = np.empty(self.step_nbr)
         self._meridionals = np.empty(self.step_nbr)
-        self._zonals[1:-1] = (self.lons[2:] - self.lons[:-2])%360*np.pi/180/(2.*time_step)
-        self._zonals[0] = (self.lons[1] - self.lons[0])%360*np.pi/180/time_step
-        self._zonals[-1] = (self.lons[-1] - self.lons[-2])%360*np.pi/180/time_step
-        self._meridionals[1:-1] = (self.lats[2:] - self.lats[:-2])*np.pi/180/(2.*time_step)
-        self._meridionals[0] = (self.lats[1] - self.lats[0])*np.pi/180/time_step
-        self._meridionals[-1] = (self.lats[-1] - self.lats[-2])*np.pi/180/time_step
+        self._zonals[1:-1] = (self.lons[2:] - self.lons[:-2])%360*np.pi/180./(2.*time_step)
+        self._zonals[0] = (self.lons[1] - self.lons[0])%360*np.pi/180./time_step
+        self._zonals[-1] = (self.lons[-1] - self.lons[-2])%360*np.pi/180./time_step
+        self._meridionals[1:-1] = (self.lats[2:] - self.lats[:-2])*np.pi/180./(2.*time_step)
+        self._meridionals[0] = (self.lats[1] - self.lats[0])*np.pi/180./time_step
+        self._meridionals[-1] = (self.lats[-1] - self.lats[-2])*np.pi/180./time_step
         self._zonals *= earthRadius*aa.cos(self.lats)
         self._meridionals *= earthRadius
 
