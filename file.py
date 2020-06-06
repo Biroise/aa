@@ -32,7 +32,7 @@ class File(object) :
         # making sure the variable's axes are given
         # to the file is the user's responsability
         with Dataset(filePath, 'w') as output :
-            for axisName, axis in self.axes.iteritems() :
+            for axisName, axis in self.axes.items() :
                 axisName = Axes.ncStandardize(axisName)
                 output.createDimension(axisName, len(axis))
                 if axisName == 'time' :
@@ -54,7 +54,7 @@ class File(object) :
                         if axis.units != None :
                             output.variables[axisName].units = axis.units
                     # TODO metadata...
-            for variableName, variable in self.variables.iteritems() :
+            for variableName, variable in self.variables.items() :
                 variable.censor_nans(ratio = 1./3)
                 if variableName == '~' :
                     variableName = 'unknown'
