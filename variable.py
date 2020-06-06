@@ -174,7 +174,7 @@ class Variable(object) :
         pass
 
     def write(self, filePath, compress = True) :
-        from file import File
+        from aa.file import File
         if 'shortName' not in self.metadata :
             self.metadata['shortName'] = 'unknown'
         fileOut = File(axes=self.axes, variables={self.shortName:self})
@@ -372,7 +372,7 @@ def yearly(self) :
     # array containing each time step's year
     YEARS = self.dt.years
     newAxes = self.axes.copy()
-    from axis import TimeAxis
+    from aa.axis import TimeAxis
     from datetime import datetime
     newAxes['time'] = TimeAxis([
             datetime(year, 1, 1) for year in years])
@@ -414,7 +414,7 @@ def monthly(self) :
     # array containing each time step's month
     MONTHS = self.dt.months
     newAxes = self.axes.copy()
-    from axis import TimeAxis
+    from aa.axis import TimeAxis
     newAxes['time'] = TimeAxis(yearMonths)
     newData = np.empty(newAxes.shape)
     newData[:] = np.nan
@@ -445,7 +445,7 @@ setattr(Variable, 'monthly', monthly)
     
 @property
 def seasonal(self) :
-    from file import File
+    from aa.file import File
     # seasonal returns a file to avoid ambiguities
     # on which is the first season
     variables = {}
@@ -457,7 +457,7 @@ setattr(Variable, 'seasonal', seasonal)
 
 @property
 def annual(self) :
-    from axis import Axis
+    from aa.axis import Axis
     axes = Axes()
     axes['month'] = Axis(range(1, 13))
     for axisName in self.axes :
@@ -473,7 +473,7 @@ setattr(Variable, 'annual', annual)
 def DJF_yearly(self) :
     # extract winter month labelling intuitively last year's December as new year's
     output = self.DJF
-    from axis import TimeAxis
+    from aa.axis import TimeAxis
     from datetime import timedelta
     output.axes['time'] = TimeAxis(output.dts + timedelta(days = 31))
     return output.yearly
