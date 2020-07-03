@@ -457,9 +457,9 @@ class Variable(aa.Variable) :
                     gribLines = gribIndex(**subConditions)
                     for member in newConditions['member'] :
                         if twistedLongitudes :
-                            self._data[lineIndex, ..., slice1] = \
+                            self._data[tuple([lineIndex, Ellipsis, slice1])] = \
                                 gribLines[member].values[mask]
-                            self._data[lineIndex, ..., slice2] = \
+                            self._data[tuple([lineIndex, Ellipsis, slice2])] = \
                                 gribLines[member].values[secondMask]
                         else :
                             self._data[lineIndex] = gribLines[member].values[mask]
