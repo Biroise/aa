@@ -460,7 +460,7 @@ class Variable(aa.Variable) :
                             self._data[tuple([lineIndex, Ellipsis, slice1])] = \
                                 gribLines[member].values[mask]
                             self._data[tuple([lineIndex, Ellipsis, slice2])] = \
-                                gribLines[member].values[secondMask]
+                                gribLines[member].values[tuple(secondMask)]
                         else :
                             self._data[lineIndex] = gribLines[member].values[mask]
                         lineIndex += 1
