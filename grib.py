@@ -268,7 +268,7 @@ class Variable(aa.Variable) :
                             conditions[axisName] = \
                                     (self.axes[axisName][item[axisIndex]].min(),
                                     self.axes[axisName][item[axisIndex]].max())
-            return self.copy()(**conditions)
+            return self(**conditions)
         # if _data already exists (as a numpy array), follow standard protocol
         else :
             return super(Variable, self).__getitem__(item)
@@ -331,6 +331,7 @@ class Variable(aa.Variable) :
         if "_data" not in self.__dict__ :
             # conditions and axes of the output variable
             newConditions = self.conditions.copy()
+            newMetadata = self.metadata.copy()
             newAxes = self.axes.copy()
             for axisName, condition in kwargs.items() :
                 # lat/lon get a special treatment within grib messages (array)
@@ -355,16 +356,16 @@ class Variable(aa.Variable) :
                 # if item is scalar, there will be no need for an axis
                 if newAxis == None :
                     del newAxes[axisName]
-                    self.metadata[axisName] = condition
+                    newMetadata[axisName] = condition
                 # otherwise, load newAxis in the new variable's axes
                 else :
                     newAxes[axisName] = newAxis
-            return Variable(newAxes, self.metadata.copy(),
+            return Variable(newAxes, newMetadata,
                         newConditions, self.fileName, self.full_axes.copy())
         # if _data already exists (as a numpy array), follow standard protocol
         else :
             return super(Variable, self).extract_data(**kwargs)
-    
+
     def _get_data(self) :
         if '_data' not in self.__dict__ :
             # dummy conditions to play with

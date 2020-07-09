@@ -185,18 +185,18 @@ def sp2thck(self) :
     sp = self.surfacePressure
     levels = self.levs
     if 'time' in self.axes :
-        standUp = [slice(None)] + [None] + [slice(None)]*(len(sp.shape)-1)
-        lieDown = [None] + [slice(None)] + [None]*(len(sp.shape)-1)
-        lieBack = [None] + [slice(None, None, -1)] + [None]*(len(sp.shape)-1)
-        shiftZ = [slice(None), slice(1, None, None)]
-        antiShiftZ = [slice(None), slice(None, -1, None)]
+        standUp = tuple([slice(None)] + [None] + [slice(None)]*(len(sp.shape)-1))
+        lieDown = tuple([None] + [slice(None)] + [None]*(len(sp.shape)-1))
+        lieBack = tuple([None] + [slice(None, None, -1)] + [None]*(len(sp.shape)-1))
+        shiftZ = tuple([slice(None), slice(1, None, None)])
+        antiShiftZ = tuple([slice(None), slice(None, -1, None)])
         zAxis = 1
     else : 
-        standUp = [None] + [slice(None)]*len(sp.shape)
-        lieDown = [slice(None)] + [None]*len(sp.shape)
-        lieBack = [slice(None, None, -1)] + [None]*len(sp.shape)
-        shiftZ = [slice(1, None, None)]
-        antiShiftZ = [slice(None, -1, None)]
+        standUp = tuple([None] + [slice(None)]*len(sp.shape))
+        lieDown = tuple([slice(None)] + [None]*len(sp.shape))
+        lieBack = tuple([slice(None, None, -1)] + [None]*len(sp.shape))
+        shiftZ = tuple([slice(1, None, None)])
+        antiShiftZ = tuple([slice(None, -1, None)])
         zAxis = 0
     if levels[0] < levels[1] :
         lowerIndex = len(levels) - 1 - np.argmax(levels[lieBack]*100
