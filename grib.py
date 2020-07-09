@@ -6,7 +6,6 @@ from operator import itemgetter
 from os.path import splitext
 from datetime import datetime
 from datetime import timedelta
-
 import aa
 
 
@@ -459,6 +458,9 @@ class Variable(aa.Variable) :
                     # normally, there should be as many lines
                     # that answer our query as there are ensemble members
                     gribLines = gribIndex(**subConditions)
+                    # catching a bug involving cfsr gribs confusing u & v winds
+                    if gribLines[0].shortName != subConditions.shortName :
+                        return _get_data(self) :
                     for member in newConditions['member'] :
                         if twistedLongitudes :
                             self._data[tuple([lineIndex, Ellipsis, slice1])] = \
