@@ -3,8 +3,8 @@ import numpy as np
 import numpy.ma as ma
 from matplotlib.colors import Normalize
 # KLUDGE
-import mpl_toolkits
-mpl_toolkits.__path__.append('/usr/local/lib/python2.7/dist-packages/mpl_toolkits/')
+#import mpl_toolkits
+#mpl_toolkits.__path__.append('/usr/local/lib/python2.7/dist-packages/mpl_toolkits/')
 
 def _get_basemap(self) :
     if '_basemap' not in self.__dict__ :
