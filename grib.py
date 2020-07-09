@@ -265,7 +265,7 @@ class Variable(aa.Variable) :
                             conditions[axisName] = \
                                     (self.axes[axisName][item[axisIndex]].min(),
                                     self.axes[axisName][item[axisIndex]].max())
-            return self(**conditions)
+            return self.copy()(**conditions)
         # if _data already exists (as a numpy array), follow standard protocol
         else :
             return super(Variable, self).__getitem__(item)
