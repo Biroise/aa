@@ -113,7 +113,6 @@ class File(aa.File) :
                         lastIndex % linesPerInstant != 0 :
                     print("Error in time axis")
                     raise Exception
-        rawFile.rewind()
 
         ############
         # VERTICAL #
@@ -147,8 +146,12 @@ class File(aa.File) :
         ###################
         # HORIZONTAL AXES #
         ###################
-        # assumes last grib messages has a spatial dimensions
+        rawFile.rewind()
+        # maybe it is necessary to rewind after this, methinks not
+        gribLine = rawFile.readline()
+        # assumes the first grib messages has a spatial dimensions
         lats, lons = gribLine.latlons()
+        # why the first and not the last ? in case there is no time dimension and gribLine is None
         if lats[0, 0] == lats[0, 1] :
             self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
             self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
