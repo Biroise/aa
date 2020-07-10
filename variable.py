@@ -243,12 +243,12 @@ class Variable(object) :
                 if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
                         newMetadata['maskedFraction'] = Variable(
                                 data = np.isnan(self.data).mean(axisIndex),
-                                axes = newAxes)
+                                axes = newAxes.copy())
                 # if there has already been some averaging going on involving nans
                 elif 'maskedFraction' in self.metadata :
                         newMetadata['maskedFraction'] = Variable(
                                 data = self.metadata['maskedFraction'].data.mean(axisIndex),
-                                axes = newAxes)
+                                axes = newAxes.copy())
                 # if you average first along the horizontal and then the vertical
                 # and hope to mask underground levels, the script will fail (as it should)
                 weightSlice = [None]*len(self.shape)
@@ -382,16 +382,19 @@ def yearly(self) :
     newMetadata = {key:value for key, value in self.metadata.items()
             if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
     if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
-        self.metadata['maskedFraction'] = Variable(
-                data = np.isnan(self.data),
-                axes = self.axes)
+            self.metadata['maskedFraction'] = Variable(
+                    data = np.isnan(self.data),
+                    axes = self.axes.copy(),
+                    metadata = {})
     if 'maskedFraction' in self.metadata :
-        newMetadata['maskedFraction'] = Variable(
-                data = np.empty(newAxes.shape),
-                axes = newAxes)
-        newMetadata['maskedFraction'].data[:] = np.nan
+            newMetadata['maskedFraction'] = Variable(
+                    data = np.empty(newAxes.shape),
+                    axes = newAxes.copy(),
+                    # kludge
+                    metadata = {})
+            newMetadata['maskedFraction'].data[:] = np.nan
     for idx, year in enumerate(years) :
-        assert self.axes.keys()[0] == 'time'
+        assert list(self.axes.keys())[0] == 'time'
         mask = YEARS == year
         newData[idx] = np.nanmean(self.data[mask], axis=0)
         if 'maskedFraction' in self.metadata :
@@ -426,11 +429,14 @@ def monthly(self) :
     if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
             self.metadata['maskedFraction'] = Variable(
                     data = np.isnan(self.data),
-                    axes = self.axes)
+                    axes = self.axes.copy(),
+                    # kludge to avoid recursion (why?)
+                    metadata = {})
     if 'maskedFraction' in self.metadata :
             newMetadata['maskedFraction'] = Variable(
                     data = np.empty(newAxes.shape),
-                    axes = newAxes)
+                    axes = newAxes.copy(),
+                    metadata = {})
             newMetadata['maskedFraction'].data[:] = np.nan
     for idx, yearMonth in enumerate(yearMonths) :
         mask = np.logical_and(
