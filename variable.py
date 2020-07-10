@@ -109,7 +109,7 @@ class Variable(object) :
                 if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
         # slice the maskedFraction exactly the same way
         if 'maskedFraction' in self.metadata :
-            newMetadata['maskedFraction'] = self.metadata['maskedFraction'](**kwargs)
+            newMetadata['maskedFraction'] = self.metadata['maskedFraction'](**kwargs).copy()
         # daughter variable does not inherit surfacePressure, etc. if 'level' is sliced
         if 'level' not in kwargs :
             if 'thickness' in self.metadata :
@@ -382,13 +382,14 @@ def yearly(self) :
     newMetadata = {key:value for key, value in self.metadata.items()
             if key not in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction']}
     if np.isnan(self.data).any() and 'maskedFraction' not in self.metadata :
-            self.metadata['maskedFraction'] = Variable(
-                    data = np.isnan(self.data),
-                    axes = self.axes)
-            newMetadata['maskedFraction'] = Variable(
-                    data = np.empty(newAxes.shape),
-                    axes = newAxes)
-            newMetadata['maskedFraction'].data[:] = np.nan
+        self.metadata['maskedFraction'] = Variable(
+                data = np.isnan(self.data),
+                axes = self.axes)
+    if 'maskedFraction' in self.metadata :
+        newMetadata['maskedFraction'] = Variable(
+                data = np.empty(newAxes.shape),
+                axes = newAxes)
+        newMetadata['maskedFraction'].data[:] = np.nan
     for idx, year in enumerate(years) :
         assert self.axes.keys()[0] == 'time'
         mask = YEARS == year
@@ -426,6 +427,7 @@ def monthly(self) :
             self.metadata['maskedFraction'] = Variable(
                     data = np.isnan(self.data),
                     axes = self.axes)
+    if 'maskedFraction' in self.metadata :
             newMetadata['maskedFraction'] = Variable(
                     data = np.empty(newAxes.shape),
                     axes = newAxes)
