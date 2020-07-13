@@ -224,18 +224,18 @@ def zonal_diff(variable) :
     output[..., :, -1] = (variable.data[..., :, -1] - variable.data[..., :, -2])/\
             (variable.lons[-1] - variable.lons[-2])*180/np.pi
     output[..., :, 1:-1] = (variable.data[..., :, 2:] - variable.data[..., :, :-2])/\
-            (variable.lons[padding + [slice(2, None)]] - variable.lons[padding + [slice(None, -2)]])*180/np.pi
+            (variable.lons[tuple(padding + [slice(2, None)])] - variable.lons[tuple(padding + [slice(None, -2)])])*180/np.pi
     return output
 
 def meridional_diff(variable) :
     output = np.empty(variable.shape)
     padding = [None]*(len(output.shape) - 2)
     output[..., 0, :] = (variable.data[..., 1, :] - variable.data[..., 0, :])/\
-            (variable.lats[padding + [1, None]] - variable.lats[padding + [0, None]])*180/np.pi
+            (variable.lats[tuple(padding + [1, None])] - variable.lats[tuple(padding + [0, None])])*180/np.pi
     output[..., -1, :] = (variable.data[..., -1, :] - variable.data[..., -2, :])/\
-            (variable.lats[padding + [-1, None]] - variable.lats[padding + [-2, None]])*180/np.pi
+            (variable.lats[tuple(padding + [-1, None])] - variable.lats[tuple(padding + [-2, None])])*180/np.pi
     output[..., 1:-1, :] = (variable.data[..., 2:, :] - variable.data[..., :-2, :])/\
-            (variable.lats[padding + [slice(2, None), None]] - variable.lats[padding + [slice(None, -2), None]])*180/np.pi
+            (variable.lats[tuple(padding + [slice(2, None), None])] - variable.lats[tuple(padding + [slice(None, -2), None])])*180/np.pi
     return output
 
 def div(zonal, meridional) :
