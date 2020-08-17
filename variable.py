@@ -358,7 +358,7 @@ def wrap_extractor(monthNumbers) :
             else :
                 newMetadata[key] = target
         return Variable(
-                data=self.data[maskSlice],
+                data=self.data[tuple(maskSlice)],
                 axes=newAxes,
                 metadata=self.metadata.copy())
     return extractor
