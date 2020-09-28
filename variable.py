@@ -10,10 +10,8 @@ class Variable(object) :
     def __init__(self, data=None, axes=Axes(), metadata={}) :
         self.axes = axes
         self.metadata = metadata
-        if type(data) == list :
+        if type(data) != type(None) :
             self._data = np.array(data)
-        elif type(data) != type(None) :
-            self._data = data
 
     def _get_data(self) :
         return self._data
@@ -224,8 +222,8 @@ class Variable(object) :
                 self.metadata['thickness'] = statistics.od2thck(self)
             if axisName == 'level' and 'thickness' in self.metadata :
                 return Variable(
-                            data = np.nansum(self.data*self.thickness.data,
-                                    axis=axisIndex),
+                            data = np.array(np.nansum(self.data*self.thickness.data,
+                                    axis=axisIndex)),
                             axes = newAxes,
                             metadata = newMetadata 
                         ).averager(axisNames)
@@ -233,8 +231,8 @@ class Variable(object) :
                 weightSlice = [None]*len(self.shape)
                 weightSlice[axisIndex] = slice(None)
                 return Variable(
-                            data = np.nansum(self.data*weights[weightSlice],
-                                    axis=axisIndex),
+                            data = np.array(np.nansum(self.data*weights[weightSlice],
+                                    axis=axisIndex)),
                             axes = newAxes,
                             metadata = newMetadata
                         ).averager(axisNames)
@@ -269,6 +267,16 @@ class Variable(object) :
     def censor_nans(self, ratio=1./3) :
         if 'maskedFraction' in self.metadata :
             self.data[self.metadata['maskedFraction'].data > ratio] = np.nan
+            """
+            try :
+                self.data[self.metadata['maskedFraction'].data > ratio] = np.nan
+            # kludge in case variable is a scalar
+            except TypeError :
+                if len(self.data.shape) == 0 :
+                    self.data = np.nan
+                else :
+                    raise Exception
+            """
     
     basemap = property(graphics._get_basemap, graphics._set_basemap)
     minimap = property(graphics._get_minimap, graphics._set_minimap)
