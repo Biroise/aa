@@ -4,8 +4,8 @@ from datetime import datetime
 
 def cycle(self, harmonics=3) :
     dts = self.dt.total_seconds*1./(3600*24)
-    spatialize = [slice(None)] + [None]*len(self.shape[1:])
-    temporalize = [None] + [slice(None)]*len(self.shape[1:])
+    spatialize = tuple([slice(None)] + [None]*len(self.shape[1:]))
+    temporalize = tuple([None] + [slice(None)]*len(self.shape[1:]))
     output = self.zeros()
     for i in range(1, harmonics+1) :
         A = np.nanmean(self.data*
@@ -29,7 +29,7 @@ def corr (self, other) :
             0)
     # predictor
     X = other.data
-    spatialize = [slice(None)] + [None]*len(Y.shape[1:])
+    spatialize = tuple([slice(None)] + [None]*len(Y.shape[1:]))
     # slope = covariance(x, y)/variance(x)
     slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
     coef = ((Y - Y.mean('t'))/np.nanstd(Y.data)*((X - np.nanmean(X))/np.nanstd(X))[spatialize]).mean('t')
@@ -102,7 +102,7 @@ def trend (self) :
         Y = self
     # predictor
     X = Y.dt.total_seconds/3600
-    spatialize = [slice(None)] + [None]*len(Y.shape[1:])
+    spatialize = tuple([slice(None)] + [None]*len(Y.shape[1:]))
     # slope = covariance(x, y)/variance(x)
     slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
     # residuals = Y - AX - B
@@ -172,8 +172,8 @@ def line(self) :
                         (X - X.mean()) \
                 + self.data.mean(0)
     else :
-        spatialize = [slice(None)] + [None]*len(self.slope.shape)
-        temporalize = [None] + [slice(None)]*len(self.slope.shape)
+        spatialize = tuple([slice(None)] + [None]*len(self.slope.shape))
+        temporalize = tuple([None] + [slice(None)]*len(self.slope.shape))
         output = self.empty()
         output.data = self.slope.data[temporalize]*\
                         (X - X.mean())[spatialize] \
