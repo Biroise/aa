@@ -120,8 +120,7 @@ class Axis(object) :
                     return slice_.start, None
                 # BUG : may return a single point if it is just outside the bounds
                 else :
-                    print('conditions out of bound')
-                    raise Exception
+                    raise Exception('conditions out of bound')
         return slice_, axis
 
     def __call__(self, condition) :
@@ -166,8 +165,7 @@ class Axis(object) :
         mask = np.logical_and(lower_mask, upper_mask)
         #case where both conditions are out of bounds
         if not lower_mask.any() or not upper_mask.any() :
-            print('conditions out of bound')
-            raise Exception
+            raise Exception('conditions out of bound')
         # now extract the sub-axis corresponding to the condition
         return (slice(np.argmax(mask),
                         len(mask) - np.argmax(mask[::-1])),
@@ -460,8 +458,7 @@ class Vertical(Axis) :
         else :
             stop = np.argmax(condition > self.data)
         if stop == 0 or stop + 1 == len(self.data) :
-            print('conditions out of bound')
-            raise Exception
+            raise Exception('conditions out of bound')
         return slice(stop - 1, stop + 1), self[slice(stop - 1, stop + 1)]
 
 def month(year, monthIndex) :
