@@ -33,7 +33,8 @@ def corr (self, other) :
     if len(self.shape) < len(other.shape) :
         self, other = other, self
     from variable import Variable
-    if type(other) == Variable :
+    #if type(other) == Variable :
+    if issubclass(type(other), Variable) :
         other = other.data
     # the case where the larger input is not a Variable is not considered
     adjust = len(other.shape)*[slice(None)] + (len(self.shape) - len(other.shape))*[None]
