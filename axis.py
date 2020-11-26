@@ -108,6 +108,21 @@ class Axis(object) :
         notMatched = index == 0 and self.data[0] != condition
         return index, notMatched
 
+    def get_neighbours(self, condition) :
+        newCondition = (condition - self.step, \
+                    condition + self.step, 'cc')
+        slice_, axis = self(newCondition)
+        # clause to catch likely bug if position very close to gridpoint
+        # slice_ could be actually be a tuple of slices (in case of longitudes)
+        if type(slice_) == slice : 
+            if slice_.stop - slice_.start == 1 :
+                if abs(self.data[slice_.start] - condition) < 0.05*self.step :
+                    return slice_.start, None
+                # BUG : may return a single point if it is just outside the bounds
+                else :
+                    raise Exception('conditions out of bound')
+        return slice_, axis
+
     def __call__(self, condition) :
         # should a range of indices be extracted ?
         if type(condition) == tuple :
@@ -136,21 +151,7 @@ class Axis(object) :
             index, notMatched = self.condition_matched(condition)
             # if there is no exact match, send the neighbours
             if notMatched :
-                newCondition = (condition - self.step, \
-                            condition + self.step, 'cc')
-                slice_, axis = self(newCondition)
-                # clause to catch likely bug if position very close to gridpoint
-                # slice_ could be actually be a tuple of slices (in case of longitudes)
-                if type(slice_) == slice : 
-                    if slice_.stop - slice_.start == 1 :
-                        if abs(self.data[slice_.start] - condition) < 0.05*self.step :
-                            return slice_.start, None
-                        # BUG : may return a single point if it is just outside the bounds
-                        else :
-                            print('conditions out of bound')
-                            raise Exception
-                            
-                return slice_, axis
+                return self.get_neighbours(condition)
             else :
                 return index, None
                 # don't add this axis to newAxes
@@ -164,8 +165,7 @@ class Axis(object) :
         mask = np.logical_and(lower_mask, upper_mask)
         #case where both conditions are out of bounds
         if not lower_mask.any() or not upper_mask.any() :
-            print('conditions out of bound')
-            raise Exception
+            raise Exception('conditions out of bound')
         # now extract the sub-axis corresponding to the condition
         return (slice(np.argmax(mask),
                         len(mask) - np.argmax(mask[::-1])),
@@ -452,13 +452,20 @@ class Vertical(Axis) :
         output *= 100/9.81
         return output
 
+    def get_neighbours(self, condition) :
+        if self.data[0] < self.data[1] :
+            stop = np.argmax(condition < self.data)
+        else :
+            stop = np.argmax(condition > self.data)
+        if stop == 0 or stop + 1 == len(self.data) :
+            raise Exception('conditions out of bound')
+        return slice(stop - 1, stop + 1), self[slice(stop - 1, stop + 1)]
 
 def month(year, monthIndex) :
     return (datetime(year, monthIndex, 1),
             datetime(year + (monthIndex+1)/12, (monthIndex+1)%12, 1),
             'co')
     
-
 def angle_sub(a, b) :
     return (a - b + 180)%360 -180
 

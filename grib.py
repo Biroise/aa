@@ -459,8 +459,9 @@ class Variable(aa.Variable) :
                     # that answer our query as there are ensemble members
                     gribLines = gribIndex(**subConditions)
                     # catching a bug involving cfsr gribs confusing u & v winds
-                    if gribLines[0].shortName != subConditions.shortName :
-                        return _get_data(self) :
+                    if gribLines[0].shortName != subConditions['shortName'] :
+                        gribLines = gribIndex(**subConditions)
+                    assert gribLines[0].shortName == subConditions['shortName']
                     for member in newConditions['member'] :
                         if twistedLongitudes :
                             self._data[tuple([lineIndex, Ellipsis, slice1])] = \

@@ -4,8 +4,8 @@ from datetime import datetime
 
 def cycle(self, harmonics=3) :
     dts = self.dt.total_seconds*1./(3600*24)
-    spatialize = [slice(None)] + [None]*len(self.shape[1:])
-    temporalize = [None] + [slice(None)]*len(self.shape[1:])
+    spatialize = tuple([slice(None)] + [None]*len(self.shape[1:]))
+    temporalize = tuple([None] + [slice(None)]*len(self.shape[1:]))
     output = self.zeros()
     for i in range(1, harmonics+1) :
         A = np.nanmean(self.data*
@@ -71,7 +71,7 @@ def trend (self) :
         Y = self
     # predictor
     X = Y.dt.total_seconds/3600
-    spatialize = [slice(None)] + [None]*len(Y.shape[1:])
+    spatialize = tuple([slice(None)] + [None]*len(Y.shape[1:]))
     # slope = covariance(x, y)/variance(x)
     slope = ((Y - Y.mean('t'))*((X - np.nanmean(X))/X.var())[spatialize]).mean('t')
     # residuals = Y - AX - B
@@ -141,8 +141,8 @@ def line(self) :
                         (X - X.mean()) \
                 + self.data.mean(0)
     else :
-        spatialize = [slice(None)] + [None]*len(self.slope.shape)
-        temporalize = [None] + [slice(None)]*len(self.slope.shape)
+        spatialize = tuple([slice(None)] + [None]*len(self.slope.shape))
+        temporalize = tuple([None] + [slice(None)]*len(self.slope.shape))
         output = self.empty()
         output.data = self.slope.data[temporalize]*\
                         (X - X.mean())[spatialize] \
@@ -193,18 +193,18 @@ def zonal_diff(variable) :
     output[..., :, -1] = (variable.data[..., :, -1] - variable.data[..., :, -2])/\
             (variable.lons[-1] - variable.lons[-2])*180/np.pi
     output[..., :, 1:-1] = (variable.data[..., :, 2:] - variable.data[..., :, :-2])/\
-            (variable.lons[padding + [slice(2, None)]] - variable.lons[padding + [slice(None, -2)]])*180/np.pi
+            (variable.lons[tuple(padding + [slice(2, None)])] - variable.lons[tuple(padding + [slice(None, -2)])])*180/np.pi
     return output
 
 def meridional_diff(variable) :
     output = np.empty(variable.shape)
     padding = [None]*(len(output.shape) - 2)
     output[..., 0, :] = (variable.data[..., 1, :] - variable.data[..., 0, :])/\
-            (variable.lats[padding + [1, None]] - variable.lats[padding + [0, None]])*180/np.pi
+            (variable.lats[tuple(padding + [1, None])] - variable.lats[tuple(padding + [0, None])])*180/np.pi
     output[..., -1, :] = (variable.data[..., -1, :] - variable.data[..., -2, :])/\
-            (variable.lats[padding + [-1, None]] - variable.lats[padding + [-2, None]])*180/np.pi
+            (variable.lats[tuple(padding + [-1, None])] - variable.lats[tuple(padding + [-2, None])])*180/np.pi
     output[..., 1:-1, :] = (variable.data[..., 2:, :] - variable.data[..., :-2, :])/\
-            (variable.lats[padding + [slice(2, None), None]] - variable.lats[padding + [slice(None, -2), None]])*180/np.pi
+            (variable.lats[tuple(padding + [slice(2, None), None])] - variable.lats[tuple(padding + [slice(None, -2), None])])*180/np.pi
     return output
 
 def div(zonal, meridional) :
