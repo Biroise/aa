@@ -28,8 +28,12 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
     # PICKLE #
     ##########
     elif filePath.endswith('.p') :
-        import __builtin__
-        import cPickle as pickle
+        try :
+            import __builtin__
+            import cPickle as pickle
+        except ModuleNotFoundError :
+            import builtins as __builtin__
+            import pickle
         inFile = __builtin__.open(filePath)
         output = pickle.load(inFile)
         inFile.close()
@@ -45,9 +49,13 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
         indexPath = fileName + '.idx'
         if os.path.isfile(picklePath) and os.path.isfile(indexPath) \
                 and not reopen :
-            import __builtin__
-            import cPickle as pickle
-            malossol = __builtin__.open(picklePath)
+            try :
+                import __builtin__
+                import cPickle as pickle
+            except ModuleNotFoundError :
+                import builtins as __builtin__
+                import pickle
+            malossol = __builtin__.open(picklePath, 'rb')
             file_ = pickle.load(malossol)
         else :
             from aa import grib
@@ -62,8 +70,12 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
 
 def dump(array, path) :
     "a wrapper around pickle.dump"
-    import __builtin__
-    import cPickle as pickle
+    try :
+        import __builtin__
+        import cPickle as pickle
+    except ModuleNotFoundError :
+        import builtins as __builtin__
+        import pickle
     with __builtin__.open(path, 'w') as outFile :
         pickle.dump(array, outFile)
     
