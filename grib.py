@@ -1,7 +1,8 @@
 
 import pygrib
 import numpy as np
-import cPickle as pickle
+#import cPickle as pickle
+import pickle
 from operator import itemgetter
 from os.path import splitext
 from datetime import datetime
@@ -97,16 +98,16 @@ class File(aa.File) :
                     self.axes['time'] = aa.TimeAxis(
                             np.array([aa.datetime(forecasted.year + (forecasted.month + timeIndex-1)/12,
                                     (forecasted.month + timeIndex-1)%12+1, 1) - aa.timedelta(hours = int(gribLine.stepRange))
-                                for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                                for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
                 else :
                     self.axes['time'] = aa.TimeAxis(
                             np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
                                     (firstInstant.month + timeIndex-1)%12+1, 1)
-                                for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                                for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
             else :
                 self.axes['time'] = aa.TimeAxis(
                         np.array([firstInstant + timeIndex*timeStep
-                        for timeIndex in range(lastIndex/linesPerInstant)]), None)
+                        for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
 
                 if lastInstant != self.dts[-1] or \
                         lastIndex % linesPerInstant != 0 :
@@ -211,7 +212,7 @@ class File(aa.File) :
         # PICKLE & INDEX #
         ##################
         rawFile.close()
-        pickleFile = open(fileName+'.p', 'w')
+        pickleFile = open(fileName+'.p', 'wb')
         #import pdb ; pdb.set_trace()
         pickle.dump(self, pickleFile)
         pickleFile.close()
