@@ -148,15 +148,24 @@ class File(aa.File) :
         rawFile.rewind()
         # maybe it is necessary to rewind after this, methinks not
         gribLine = rawFile.readline()
-        # assumes the first grib messages has a spatial dimensions
+        # assumes the first grib messages has spatial dimensions
         lats, lons = gribLine.latlons()
         # why the first and not the last ? in case there is no time dimension and gribLine is None
-        if lats[0, 0] == lats[0, 1] :
-            self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
-            self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
+        if lats.shape[1] > 1 :
+            if lats[0, 0] == lats[0, 1] :
+                self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
+                self.axes['longitude'] = aa.Parallel(lons[0, :], 'degrees')
+            else :
+                self.axes['latitude'] = aa.Meridian(lats[0, :], 'degrees')
+                self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
         else :
-            self.axes['latitude'] = aa.Meridian(lats[0, :], 'degrees')
-            self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
+            if lats[0, 0] == lats[1, 0] :
+                self.axes['latitude'] = aa.Meridian([lats[0, 0]], 'degrees')
+                self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
+            else :
+                self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
+                self.axes['longitude'] = aa.Parallel(lons[0, 0], 'degrees')
+            
 
         #############
         # VARIABLES #
