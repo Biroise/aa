@@ -1,4 +1,3 @@
-
 import numpy as np
 import numpy.ma as ma
 from matplotlib.colors import Normalize
@@ -527,9 +526,12 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
         # LATITUDE PROFILE #
         ####################
         if 'latitude' in self.axes :
-            #self.draw_minimap()
+            output = plt.plot(self.lats, schnouf.data, lw = 0.5)[0]
+            color = output.get_color()
+            output = (output, 
+                    plt.plot(self.lats, schnouf, lw = 1.5, color=color, **kwargs)[0])
             plt.xlim(self.lats.min(), self.lats.max())
-            return plt.plot(self.lats, self.data, **kwargs)
+            return ax_0, ax_1, output
     elif len(self.slope.shape) == 2 :
         schnouf = np.ma.array(data = self.slope.data, mask = self.significance.data)
         #######
