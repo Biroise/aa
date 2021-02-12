@@ -165,7 +165,7 @@ class File(aa.File) :
                 self.axes['longitude'] = aa.Parallel(lons[:, 0], 'degrees')
             else :
                 self.axes['latitude'] = aa.Meridian(lats[:, 0], 'degrees')
-                self.axes['longitude'] = aa.Parallel(lons[0, 0], 'degrees')
+                self.axes['longitude'] = aa.Parallel([lons[0, 0]], 'degrees')
             
 
         #############
@@ -173,8 +173,8 @@ class File(aa.File) :
         #############
         for variableName, levelKinds in variablesLevels.items() :
             for levelType, verticalAxis in levelKinds.items() :
-                conditions = {'shortName' : variableName.encode('ascii'),
-                        'typeOfLevel' : levelType.encode('ascii')}
+                conditions = {'shortName' : variableName,
+                        'typeOfLevel' : levelType}
                 axes = aa.Axes()
                 if timeDimension :
                     axes['time'] = self.axes['time']
@@ -436,9 +436,11 @@ class Variable(aa.Variable) :
             ### HORIZONTAL SHAPE ###
             # shape of the output array : (time, level, horizontalShape)
             horizontalShape = []
-            if hasattr(self, 'lats') :
+            #if hasattr(self, 'lats') :
+            if 'latitude' in self.axes :
                 horizontalShape.append(len(self.lats))
-            if hasattr(self, 'lons') :
+            #if hasattr(self, 'lons') :
+            if 'longitude' in self.axes :
                 horizontalShape.append(len(self.lons))
             horizontalShape = tuple(horizontalShape)
             #####################

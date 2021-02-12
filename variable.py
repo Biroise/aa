@@ -305,8 +305,8 @@ def wrap_operator(operatorName) :
     return operator
 for operatorName in [
             '__gt__', '__lt__', '__ge__', '__le__', '__eq__', '__ne__',
-            '__add__', '__sub__', '__div__', '__mul__', '__pow__',
-            '__radd__', '__rsub__', '__rdiv__', '__rmul__', '__rpow__'] :
+            '__add__', '__sub__', '__truediv__', '__mul__', '__pow__',
+            '__radd__', '__rsub__', '__rtruediv__', '__rmul__', '__rpow__'] :
     setattr(Variable, operatorName, wrap_operator(operatorName))
 
 """
@@ -362,7 +362,8 @@ def wrap_extractor(monthNumbers) :
         newMetadata = {}
         for key, target in self.metadata.items() :
             if key in ['oceanDepth', 'surfacePressure', 'thickness', 'maskedFraction'] :
-                newMetadata[key] = wrap_extractor(monthNumbers)(target)
+                #newMetadata[key] = wrap_extractor(monthNumbers)(target)
+                newMetadata[key] = target.wrap_extractor(monthNumbers)
             else :
                 newMetadata[key] = target
         return Variable(
