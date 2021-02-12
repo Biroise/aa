@@ -57,9 +57,6 @@ def corr (self, other) :
     t_level = student.ppf(0.975, effectiveSampleSize - 2)
     # also possible : use cdf to determine p-value of t_stat
     p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
-    #print slope.data, sigmaSlope, p_value
-    # per decade rates
-    return coef, t_stat > t_level
     #p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
     #print slope.data, sigmaSlope, p_value
     # per decade rates
@@ -140,14 +137,14 @@ def line(self) :
         output = self.empty()
         output.data = self.slope.data*\
                         (X - X.mean()) \
-                + self.data.mean(0)
+                + np.nanmean(self.data, 0)
     else :
         spatialize = tuple([slice(None)] + [None]*len(self.slope.shape))
         temporalize = tuple([None] + [slice(None)]*len(self.slope.shape))
         output = self.empty()
         output.data = self.slope.data[temporalize]*\
                         (X - X.mean())[spatialize] \
-                + self.data.mean(0)[temporalize]
+                + np.nanmean(self.data, 0)[temporalize]
     return output
 
 def sp2thck(self) :

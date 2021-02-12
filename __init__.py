@@ -56,7 +56,12 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
                 import builtins as __builtin__
                 import pickle
             malossol = __builtin__.open(picklePath, 'rb')
-            file_ = pickle.load(malossol)
+            # kludgy exception for old python2 pickles
+            try :
+                file_ = pickle.load(malossol)
+            except UnicodeDecodeError :
+                from aa import grib
+                file_ = grib.File(filePath)
         else :
             from aa import grib
             file_ = grib.File(filePath)
