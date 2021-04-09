@@ -91,5 +91,8 @@ def cos(angleInDegrees) :
 def sin(angleInDegrees) :
     return np.sin(angleInDegrees*np.pi/180.0)
 
-from aa.load import *
+try :
+    from aa.load import *
+except ImportError :
+    pass
 
