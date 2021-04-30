@@ -473,4 +473,8 @@ def angle_sub(a, b) :
 def in_seconds(delta) :
     return delta.seconds
 
+class Calendar(Axis) :
+    def __init__(self):
+        super(Calendar, self).__init__(np.arange(1, 13), 'month index')
+        self.names = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 

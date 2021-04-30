@@ -526,6 +526,7 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
         # LATITUDE PROFILE #
         ####################
         if 'latitude' in self.axes :
+            ax_0, ax_1 = self.draw_minimap()
             output = plt.plot(self.lats, schnouf.data, lw = 0.5)[0]
             color = output.get_color()
             output = (output, 
@@ -648,3 +649,85 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
             plt.ylim(self.lev.edges[0], self.lev.edges[-1])
             if self.levs[0] < self.levs[1] :
                 plt.gca().invert_yaxis()
+
+def plot_cycle(self, **kwargs) :
+    assert len(self.axes) == 1 and 'time' in self.axes
+    output = self.cycle()
+    import matplotlib.pyplot as plt
+    plt.plot([output.data[-1]] + list(output.data) + [output.data[0]], **kwargs)
+    plt.xlim(0, 13)
+    plt.gca().set_xticks(np.arange(1, 13))
+    plt.gca().set_xticklabels(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'], rotation = 90)
+
+def plot_delta(self, hatch = True, orientation='vertical', **kwargs) :
+    import matplotlib.pyplot as plt
+    ######################
+    # 1D e.g time series #
+    ######################
+    if len(self.slope.shape) == 1 :
+        # may be necessary
+        #mask = ~np.isnan(self.slope.data)
+        #schnouf = np.ma.array(data = self.slope.data, mask = ~self.significance.data)
+        ####################
+        # VERTICAL PROFILE #
+        ####################
+        if 'level' in self.axes :
+            output = []
+            output.append(plt.plot(self.ante.data, self.levs, lw = 0.5, ls = ':')[0])
+            color = output[0].get_color()
+            output.append(plt.plot(self.post.data, self.levs, lw = 0.5, ls = '--', color=color)[0])
+            output.append(
+                    plt.plot(
+                            np.ma.array(data = self.post.data, mask = ~self.significance.data),
+                            self.levs, lw = 1.0, ls = ':', color=color)[0])
+            output.append(
+                    plt.plot(
+                            np.ma.array(data = self.post.data, mask = ~self.significance.data),
+                            self.levs, lw = 1.0, ls = '--', color=color)[0])
+            # make sure pressures decrease with height
+            if not plt.gca().yaxis_inverted() :
+                plt.gca().invert_yaxis()
+            plt.xlim(self.levs.max(), self.levs.min())
+            return tuple(output)
+        #####################
+        # LONGITUDE PROFILE #
+        #####################
+        if 'longitude' in self.axes :
+            ax_0, ax_1 = self.draw_minimap()
+            output = []
+            output.append(plt.plot(self.lons, self.ante.data, lw = 0.5, ls = ':')[0])
+            color = output[0].get_color()
+            output.append(plt.plot(self.lons, self.post.data, lw = 0.5, ls = '--', color=color)[0])
+            output.append(
+                    plt.plot(
+                            self.lons, np.ma.array(data = self.post.data, mask = ~self.significance.data),
+                            lw = 1.0, ls = ':', color=color)[0])
+            output.append(
+                    plt.plot(
+                            self.lons, np.ma.array(data = self.post.data, mask = ~self.significance.data),
+                            lw = 1.0, ls = '--', color=color)[0])
+            plt.xlim(self.lons.min(), self.lons.max())
+            return (ax_0, ax_1,) + tuple(output)
+        ####################
+        # LATITUDE PROFILE #
+        ####################
+        if 'latitude' in self.axes :
+            ax_0, ax_1 = self.draw_minimap()
+            output = []
+            output.append(plt.plot(self.ante.data, self.lats, lw = 0.5, ls = ':')[0])
+            color = output[0].get_color()
+            output.append(plt.plot(self.post.data, self.lats, lw = 0.5, ls = '--', color=color)[0])
+            output.append(
+                    plt.plot(
+                            np.ma.array(data = self.post.data, mask = ~self.significance.data), self.lats, 
+                            lw = 1.0, ls = ':', color=color)[0])
+            output.append(
+                    plt.plot(
+                            np.ma.array(data = self.post.data, mask = ~self.significance.data), self.lats, 
+                            lw = 1.0, ls = '--', color=color)[0])
+            plt.ylim(self.lats.min(), self.lats.max())
+            return (ax_0, ax_1,) + tuple(output)
+    else :
+        print("Variable has too many or too few axes")
+        raise
+

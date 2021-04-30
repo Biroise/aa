@@ -2,7 +2,7 @@
 import numpy as np
 from datetime import datetime
 
-def cycle(self, harmonics=3) :
+def fourier(self, harmonics=3) :
     dts = self.dt.total_seconds*1./(3600*24)
     spatialize = tuple([slice(None)] + [None]*len(self.shape[1:]))
     temporalize = tuple([None] + [slice(None)]*len(self.shape[1:]))

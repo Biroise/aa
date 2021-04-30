@@ -7,7 +7,8 @@ import aa.statistics as statistics
 
 
 class Variable(object) :
-    def __init__(self, data=None, axes=Axes(), metadata={}) :
+    #def __init__(self, data=None, axes=Axes(), metadata=dict()) :
+    def __init__(self, data=None, axes=Axes(), metadata = dict()) :
         self.axes = axes
         self.metadata = metadata
         if type(data) != type(None) :
@@ -496,6 +497,19 @@ def DJF_yearly(self) :
     return output.yearly
 setattr(Variable, 'DJF_yearly', DJF_yearly)
 
+def cycle(self) :
+    assert 'time' in self.axes
+    axes = Axes()
+    from aa.axis import Calendar
+    axes['month'] = Calendar()
+    for axisName, axis in self.axes.items() :
+        if axisName != 'time' :
+            axes[axisName] = axis.copy()
+    data = np.nanmean(self.monthly.data.reshape((-1, 12) + self.shape[1:]), 0)
+    return Variable(data = data, axes = axes)
+setattr(Variable, 'cycle', cycle)
+    
+
 """
 def wrap_smoother(monthNumbers) :
     @property
@@ -556,11 +570,13 @@ setattr(Variable, 'draw_minimap', graphics.draw_minimap)
 setattr(Variable, 'taylor', graphics.taylor)
 setattr(Variable, 'xyz', graphics.xyz)
 setattr(Variable, 'XYZ', graphics.XYZ)
-setattr(Variable, 'plot_trend', graphics.plot_trend)
 setattr(Variable, 'plot', graphics.plot)
+setattr(Variable, 'plot_trend', graphics.plot_trend)
+setattr(Variable, 'plot_cycle', graphics.plot_cycle)
+setattr(Variable, 'plot_delta', graphics.plot_delta)
 setattr(Variable, 'div', statistics.div)
 setattr(Variable, 'corr', statistics.corr)
 setattr(Variable, 'rot', statistics.rot)
-setattr(Variable, 'cycle', statistics.cycle)
+setattr(Variable, 'fourier', statistics.fourier)
 setattr(Variable, 'smooth', statistics.smooth)
 setattr(Variable, 'corr', statistics.corr)
