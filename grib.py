@@ -96,12 +96,12 @@ class File(aa.File) :
                 if gribLine.stepType == 'avgfc' :
                     forecasted = firstInstant + aa.timedelta(hours = int(gribLine.stepRange))
                     self.axes['time'] = aa.TimeAxis(
-                            np.array([aa.datetime(forecasted.year + (forecasted.month + timeIndex-1)/12,
+                            np.array([aa.datetime(forecasted.year + (forecasted.month + timeIndex-1)//12,
                                     (forecasted.month + timeIndex-1)%12+1, 1) - aa.timedelta(hours = int(gribLine.stepRange))
                                 for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
                 else :
                     self.axes['time'] = aa.TimeAxis(
-                            np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)/12,
+                            np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)//12,
                                     (firstInstant.month + timeIndex-1)%12+1, 1)
                                 for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
             else :
