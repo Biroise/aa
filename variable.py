@@ -57,7 +57,7 @@ class Variable(object) :
     def __call__(self, **kwargs) :
         # input : {axisName: condition, ...}
         # standardize the axisNames
-        for axisName, condition in kwargs.items() :
+        for axisName, condition in kwargs.copy().items() :
             del kwargs[axisName]
             if type(condition) == tuple :
                 condition = tuple(sorted(condition[:2]))+condition[2:]
