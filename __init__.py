@@ -96,3 +96,15 @@ try :
 except ImportError :
     pass
 
+def mkdir(path) :
+    import os
+    prefix = ''
+    if not path.startswith('/') :
+        prefix = '.'
+    if path.split('/')[-1] not in os.listdir(prefix + '/' + '/'.join(path.split('/')[:-1])) :
+        os.mkdir(path)
+
+monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 
+        'SEP', 'OCT', 'NOV', 'DEC']
+seasonNames = ['DJF', 'MAM', 'JJA', 'SON']
+
