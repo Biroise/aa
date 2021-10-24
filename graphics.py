@@ -264,7 +264,7 @@ def plot(self, *args, **kwargs) :
         # MAP #
         #######
         if np.nanmin(self.data) < 0 and np.nanmax(self.data) > 0:
-            cmap = plt.cm.seismic
+            kwargs['cmap'] = plt.cm.seismic
             norm = ccb() 
         else :
             #cmap = plt.cm.hot_r
@@ -274,7 +274,7 @@ def plot(self, *args, **kwargs) :
                 'longitude' in self.axes :
             self.basemap.drawcoastlines()
             graph = self.basemap.pcolormesh(*self.xyz(),
-                cmap = cmap, norm = norm)
+                norm = norm, **kwargs)
             colorBar = plt.colorbar()
             if 'units' in self.__dict__ :
                 colorBar.set_label(self.units)
@@ -287,7 +287,7 @@ def plot(self, *args, **kwargs) :
             plt.xlim(0, len(self.lons))
             plt.ylim(0, len(self.dts))
             graph = plt.pcolormesh(ma.masked_invalid(self.data),
-                    cmap = cmap, norm = norm)
+                    norm = norm, **kwargs)
             plt.draw()
             tickLabels = [tckL.get_text() 
                     for tckL in plt.gca().get_yticklabels()]
@@ -303,7 +303,7 @@ def plot(self, *args, **kwargs) :
         ######################
         if 'level' in self.axes and 'time' in self.axes :
             graph = plt.pcolormesh(ma.masked_invalid(self.data.transpose()),
-                    cmap = cmap, norm = norm)
+                    norm = norm, **kwargs)
             plt.draw()
             plt.xlim(0, len(self.dts))
             plt.ylim(0, len(self.levs))
@@ -339,7 +339,7 @@ def plot(self, *args, **kwargs) :
             x, y = np.meshgrid(self.lon.edges, self.lev.edges)
             graph = plt.pcolormesh(
                     x, y, ma.masked_invalid(self.data),
-                    cmap = cmap, norm = norm)
+                    norm = norm, **kwargs)
             plt.xlim(self.lons[0], self.lons[-1])
             plt.ylim(self.lev.edges[0], self.lev.edges[-1])
             if self.levs[0] < self.levs[1] :
@@ -353,7 +353,7 @@ def plot(self, *args, **kwargs) :
             x, y = np.meshgrid(self.lat.edges, self.lev.edges)
             graph = plt.pcolormesh(
                     x, y, ma.masked_invalid(self.data),
-                    cmap = cmap, norm = norm)
+                    norm = norm, **kwargs)
             plt.xlim(self.lats[0], self.lats[-1])
             plt.ylim(self.lev.edges[0], self.lev.edges[-1])
             if self.levs[0] < self.levs[1] :
@@ -555,8 +555,9 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                 hatch = ca.fill(
                         [self.lons[0], self.lons[-1], self.lons[-1], self.lons[0]],
                         [self.lats.min(), self.lats.min(), self.lats.max(), self.lats.max()],
+                        alpha = 0.6,
                         zorder = 0.75,
-                        fill=False, hatch='x')
+                        fill=False, hatch='xxx')
             else :
                 # we assume it's a round nplaea/splaea
                 from matplotlib.patches import Ellipse
@@ -566,7 +567,8 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                         Ellipse(
                                 ((x1+x2)*0.5, (x1+x2)*0.5), x1-x2, x1-x2,
                                 zorder=0.75, 
-                                fill=False, hatch='x'))
+                                alpha = 0.6,
+                                fill=False, hatch='xxx'))
             graph = self.basemap.pcolormesh(
                     x, y, schnouf,
                     cmap=plt.cm.seismic, 
@@ -601,7 +603,8 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                     [self.lev.edges[0], self.lev.edges[0],
                             self.lev.edges[-1], self.lev.edges[-1]],
                     zorder = 0.75,
-                    fill=False, hatch='x')
+                    alpha = 0.6,
+                    fill=False, hatch='xxx')
             if not hatch :
                 plt.cla()
             # only the significant tiles
@@ -635,8 +638,9 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                     [self.lats[0], self.lats[-1], self.lats[-1], self.lats[0]],
                     [self.lev.edges[0], self.lev.edges[0],
                             self.lev.edges[-1], self.lev.edges[-1]],
+                    alpha = 0.6,
                     zorder = 0.75,
-                    fill=False, hatch='x')
+                    fill=False, hatch='xxx')
             if not hatch :
                 plt.cla()
             # only the significant tiles
