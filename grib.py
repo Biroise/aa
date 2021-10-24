@@ -92,18 +92,35 @@ class File(aa.File) :
             gribLine = rawFile.message(lastIndex)
             lastInstant = datetime(gribLine.year, gribLine.month, gribLine.day,
                         gribLine.hour, gribLine.minute, gribLine.second)
-            if timeStep.days >= 30 :
-                if gribLine.stepType == 'avgfc' :
+            if timeStep.days >= 28 :
+                #if gribLine.stepType == 'avgfc' and firstInstant.month == 12 :
+                if firstInstant.month == 12 :
+                    #forecasted = firstInstant + aa.timedelta(hours = int(gribLine.stepRange))
+                    self.axes['time'] = aa.TimeAxis(
+                            np.array([aa.datetime(firstInstant.year + 1 + (1 + timeIndex-1)//12,
+                                            (1 + timeIndex-1)%12+1, 1)
+                                            - aa.datetime(firstInstant.year + 1, 1, 1)
+                                            + aa.datetime(firstInstant.year, firstInstant.month, firstInstant.day, firstInstant.hour)
+                                for timeIndex in range(int(lastIndex/linesPerInstant))]), None) 
+                else :
+                    self.axes['time'] = aa.TimeAxis(
+                            np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)//12,
+                                    (firstInstant.month + timeIndex-1)%12+1, 1)
+                                for timeIndex in range(int(lastIndex/linesPerInstant))]), None) 
+                """
+                # attempt at reading "regular monthly means" i.e. average of all XX UTC values
+                try :
                     forecasted = firstInstant + aa.timedelta(hours = int(gribLine.stepRange))
                     self.axes['time'] = aa.TimeAxis(
                             np.array([aa.datetime(forecasted.year + (forecasted.month + timeIndex-1)//12,
                                     (forecasted.month + timeIndex-1)%12+1, 1) - aa.timedelta(hours = int(gribLine.stepRange))
                                 for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
-                else :
+                except (RuntimeError, ValueError) as error :
                     self.axes['time'] = aa.TimeAxis(
                             np.array([aa.datetime(firstInstant.year + (firstInstant.month + timeIndex-1)//12,
-                                    (firstInstant.month + timeIndex-1)%12+1, 1)
+                                    (firstInstant.month + timeIndex-1)%12+1, 1, firstInstant.hour)
                                 for timeIndex in range(int(lastIndex/linesPerInstant))]), None)
+                """
             else :
                 self.axes['time'] = aa.TimeAxis(
                         np.array([firstInstant + timeIndex*timeStep

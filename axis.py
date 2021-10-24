@@ -13,7 +13,7 @@ class Axes(OrderedDict) :
         'XDim':'longitude', 'YDim':'latitude',
         'g4_lat_1':'latitude', 'g4_lon_2':'longitude',
         'longitudes':'longitude', 'lon':'longitude',
-        'level':'level', 'levels':'level', 'lev':'level',
+        'level':'level', 'levels':'level', 'lev':'level', 'plev':'level',
         'Height':'level',
         'time':'time', 'dt':'time', 't':'time',
         'Time':'time', 'TIME':'time',
@@ -226,10 +226,13 @@ class TimeAxis(Axis) :
                 units = words[0]
                 date = [int(bits) for bits in words[2].split('-')]
                 epoch = datetime(date[0], date[1], date[2])
-                self.data = np.array(
-                    [epoch + timedelta(**{units: np.asscalar(offset)})
-                    for offset in self.data])
-                self.units = None
+                try :
+                    self.data = np.array(
+                        [epoch + timedelta(**{units: np.asscalar(offset)})
+                        for offset in self.data])
+                    self.units = None
+                except OverflowError :
+                    print("Warning : conversion to datetime failed")
     
     @property
     def step(self) :

@@ -76,7 +76,7 @@ class File(aa.File) :
 
 class Variable(aa.Variable) :
     def __init__(self, data, axes, metadata, rawFile)    :
-        super(Variable, self).__init__(data, axes, metadata)
+        super(Variable, self).__init__(data, axes, metadata = metadata)
         self._raw = rawFile
     
     def close(self) :
