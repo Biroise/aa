@@ -34,7 +34,7 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
         except ModuleNotFoundError :
             import builtins as __builtin__
             import pickle
-        inFile = __builtin__.open(filePath)
+        inFile = __builtin__.open(filePath, 'rb')
         output = pickle.load(inFile)
         inFile.close()
         return output
@@ -81,7 +81,7 @@ def dump(array, path) :
     except ModuleNotFoundError :
         import builtins as __builtin__
         import pickle
-    with __builtin__.open(path, 'w') as outFile :
+    with __builtin__.open(path, 'wb') as outFile :
         pickle.dump(array, outFile)
     
 
