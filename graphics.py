@@ -482,7 +482,7 @@ class mini_ccb(Normalize):
         else :
             return ma.masked_array(np.interp(value, x, y))
 
-def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
+def plot_trend(self, hatch = True, colorbar = True, orientation='vertical', **kwargs) :
     import matplotlib.pyplot as plt
     ######################
     # 1D e.g time series #
@@ -547,9 +547,11 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                     x, y, schnouf.data,
                     cmap=plt.cm.seismic, 
                     norm=mini_ccb(),
-                    zorder=0.5)
+                    zorder=0.5,
+                    **kwargs)
             ca = plt.gca()
-            colorBar = plt.colorbar(orientation=orientation)
+            if colorbar :
+                colorBar = plt.colorbar(orientation=orientation)
             # what is the shape of the map we must hatch ?
             if self.basemap.projection == 'cyl' :
                 hatch = ca.fill(
@@ -577,12 +579,15 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                             vmax=schnouf.data.max()),
                     zorder=1,
                     **kwargs)
-            if 'units' in self.__dict__ :
-                colorBar.set_label(self.units + ' per decade')
-            graph = self.basemap.pcolormesh(*self.slope.xyz(),
+            #if 'units' in self.__dict__ :
+            #    colorBar.set_label(self.units + ' per decade')
+            self.basemap.pcolormesh(*self.slope.xyz(),
                     cmap=plt.cm.seismic, norm=mini_ccb(), alpha=0.01)
             #cs = self.basemap.contour(*((-1)*self.significance+0.5).XYZ(), levels=[-0.1, 0])
-            return graph, colorBar
+            if colorbar :
+                return graph, colorBar
+            else :
+                return graph
         ###########
         # LON-LEV #
         ###########
@@ -595,7 +600,8 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                     x, y, schnouf.data,
                     cmap=plt.cm.seismic,
                     norm=mini_ccb(),
-                    zorder = 0.5)
+                    zorder = 0.5,
+                    **kwargs)
             ca = plt.gca()
             plt.colorbar(graph, cax=axs[2], orientation=orientation)
             hatch = ca.fill(
@@ -630,7 +636,8 @@ def plot_trend(self, hatch = True, orientation='vertical', **kwargs) :
                     x, y, schnouf.data,
                     cmap=plt.cm.seismic,
                     norm=mini_ccb(),
-                    zorder = 0.5)
+                    zorder = 0.5,
+                    **kwargs)
             ca = plt.gca()
             #plt.draw()
             plt.colorbar(graph, orientation=orientation)

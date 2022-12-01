@@ -420,9 +420,13 @@ def monthly(self) :
     # more rigid than before : starts in January, ends in December
     # for some reason, a full slice was supplied to the source data
     from datetime import datetime
-    yearMonths = [datetime(year, month, 1)
-            for year in range(self.dts[0].year, self.dts[-1].year + 1)
-            for month in range(1, 13)]
+    if self.dts[0].year != self.dts[-1].year :
+        yearMonths = [datetime(year, month, 1)
+                for year in range(self.dts[0].year, self.dts[-1].year + 1)
+                for month in range(1, 13)]
+    else :
+        yearMonths = [datetime(self.dts[0].year, month, 1)
+                for month in range(self.dts[0].month, self.dts[-1].month + 1)]
     # array containing each time step's year
     YEARS = self.dt.years
     # array containing each time step's month

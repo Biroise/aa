@@ -54,7 +54,8 @@ class File :
     def __init__(self, trk_file_path, no_mountains = True, year=None, lonlat=False) :
         if no_mountains :
             #elevation = aa.load('ice')
-            elevation = aa.open('/home/dufour/AcuerdaTe/topo/era_topo.nc')
+            #elevation = aa.open('/home/dufour/AcuerdaTe/topo/era_topo.nc')
+            elevation = aa.open('era_topo.nc')
         trk_file = open(trk_file_path)
         if year == None :
             # most likely, this is a standard .trk file name
@@ -184,7 +185,7 @@ class File :
                 )
     
     def write(self, filePath) :
-        import cPickle as pickle
+        import pickle
         with open(filePath, 'w') as outFile :
             pickle.dump(self, outFile)
 
@@ -264,11 +265,12 @@ def load_raw(year, hemisphere='NH') :
         
 def load(year, hemisphere='NH') :
     import os
-    filePath = '/media/dufour/AcuerdaTe/cyclones/'+hemisphere+'/'
+    filePath = '/home/dufoura/atelier/mechs/cy/trk/'
     fileName = 'slp.'+str(year)+'.NH.'
     if fileName + 'p' in os.listdir(filePath) :
-        import cPickle as pickle
-        return pickle.load(open(filePath + fileName + 'p'))
+        #import pickle
+        #return pickle.load(open(filePath + fileName + 'p'))
+        return aa.open(filePath + fileName + 'p')
     else :
         return File(filePath + fileName + 'trk')
 

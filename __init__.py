@@ -35,7 +35,11 @@ def open(filePath, mode='r', reopen=False, returnSingleVariable=returnSingleVari
             import builtins as __builtin__
             import pickle
         inFile = __builtin__.open(filePath, 'rb')
-        output = pickle.load(inFile)
+        try :
+            output = pickle.load(inFile)
+        except UnicodeDecodeError :
+            inFile.seek(0)
+            output = pickle.load(inFile, encoding = 'latin1')
         inFile.close()
         return output
     else :

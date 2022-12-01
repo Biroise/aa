@@ -99,8 +99,12 @@ def trend (self) :
     # also possible : use cdf to determine p-value of t_stat
     p_value = student.cdf(t_stat.data, effectiveSampleSize - 2)
     #print slope.data, sigmaSlope, p_value
+    # ideally we would have another hash type to indicate empty values
+    significance = t_stat > t_level
+    #significance.data[np.isnan(slope.data)] = False
+    slope.data[np.isnan(slope.data)] = 0
     # per decade rates
-    return slope*24*365.25*10, t_stat > t_level
+    return slope*24*365.25*10, significance
 
 def slope(self) :
     if '_slope' not in self.__dict__ :
