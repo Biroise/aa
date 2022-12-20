@@ -188,6 +188,7 @@ class File(aa.File) :
         #############
         # VARIABLES #
         #############
+        self.variables = {}
         for variableName, levelKinds in variablesLevels.items() :
             for levelType, verticalAxis in levelKinds.items() :
                 conditions = {'shortName' : variableName,

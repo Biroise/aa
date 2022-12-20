@@ -65,7 +65,8 @@ class File(aa.File) :
                         self._raw.variables[variableName].description
             self.variables[variableName] = \
                     Variable(
-                        data=self._raw.variables[variableName][:],
+                        #data=self._raw.variables[variableName][:],
+                        label = variableName,
                         axes=variableAxes,
                         metadata=variableMetaData, 
                         rawFile=self._raw)
@@ -75,12 +76,21 @@ class File(aa.File) :
 
 
 class Variable(aa.Variable) :
-    def __init__(self, data, axes, metadata, rawFile)    :
-        super(Variable, self).__init__(data, axes, metadata = metadata)
+    def __init__(self, axes, metadata, rawFile, **kwargs)    :
+        if 'data' not in kwargs :
+            kwargs['data'] = None
+        super(Variable, self).__init__(kwargs['data'], axes, metadata = metadata)
         self._raw = rawFile
-    
+        if 'label' in kwargs :
+            self.label = kwargs['label']
+
+    @property 
+    def data(self) :
+        # if the variable is still untouched
+        if "_data" not in self.__dict__ :
+            self._data = self._raw.variables[self.label][:],
+        return self._data
+
     def close(self) :
         self._raw.close()
-
-        
 
