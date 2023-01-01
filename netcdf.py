@@ -88,8 +88,18 @@ class Variable(aa.Variable) :
     def data(self) :
         # if the variable is still untouched
         if "_data" not in self.__dict__ :
-            self._data = self._raw.variables[self.label][:],
+            self._data = self._raw.variables[self.label][:]
         return self._data
+    @data.setter
+    def data(self, value) :
+        self._data = value
+
+    @property 
+    def shape(self) :
+        # if the variable is still untouched
+        if "_data" not in self.__dict__ :
+            self._data = self._raw.variables[self.label][:]
+        return self._data.shape
 
     def close(self) :
         self._raw.close()
